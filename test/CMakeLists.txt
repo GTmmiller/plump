@@ -17,11 +17,12 @@ endif()
 include(GoogleTest)
 
 add_executable(plump_unittest plump_unittest.cc)
-target_link_libraries(
-  plump_unittest
+target_link_libraries( plump_unittest
   gtest
   gmock
   gtest_main
+  plump_client_lib
+  plump_server_lib
 )
 
 gtest_discover_tests(plump_unittest)

@@ -18,46 +18,29 @@
 
 #include <iostream>
 #include <memory>
-#include <string>
-#include <vector>
 
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 
+#include "plump_server.h"
 
-#include "plump.grpc.pb.h"
-
-using grpc::Server;
 using grpc::ServerBuilder;
-using grpc::ServerContext;
-using grpc::Status;
 
-using plump::CreateDestroyRequest;
-using plump::CreateDestroyReply;
-using plump::ListRequest;
-using plump::ListReply;
-using plump::Plump;
+Status PlumpServiceImpl::CreateLock(ServerContext* context, const CreateDestroyRequest* request,
+                  CreateDestroyReply* reply) {
+  reply->set_success(true);
+  reply->set_message("Lock: " + request->lock_name() + " successfully created");
+  locks_.push_back(request->lock_name());
+  return Status::OK;
+}
 
-class PlumpServiceImpl final : public Plump::Service {
-  Status CreateLock(ServerContext* context, const CreateDestroyRequest* request,
-                    CreateDestroyReply* reply) override {
-    reply->set_success(true);
-    reply->set_message("Lock: " + request->lock_name() + " successfully created");
-    locks_.push_back(request->lock_name());
-    return Status::OK;
+Status PlumpServiceImpl::ListLocks(ServerContext* context, const ListRequest* request, ListReply* reply) {
+  for(auto start = locks_.begin(); start < locks_.end(); start++) {
+    reply->add_lock_names(*start);
   }
-
-  Status ListLocks(ServerContext* context, const ListRequest* request, ListReply* reply) override {
-    for(auto start = locks_.begin(); start < locks_.end(); start++) {
-      reply->add_lock_names(*start);
-    }
-    return Status::OK;
-  }
-
-  private:
-    std::vector<std::string> locks_;
-};
+  return Status::OK;
+}
 
 void RunServer() {
   std::string server_address("0.0.0.0:50051");
