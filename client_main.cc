@@ -27,8 +27,12 @@ int main(int argc, char** argv) {
   } else {
     target_str = "localhost:50051";
   }
-  PlumpClient plump(grpc::CreateChannel(
+
+  // Create a stub using a channel with insecure credentials
+  std::unique_ptr<Plump::StubInterface> stub = Plump::NewStub(grpc::CreateChannel(
       target_str, grpc::InsecureChannelCredentials()));
+  
+  PlumpClient plump(std::move(stub));
   std::string lock_name("database");
   std::string reply = plump.CreateLock(lock_name);
   std::cout << reply << std::endl;

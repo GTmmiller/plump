@@ -26,10 +26,10 @@ TEST(PlumpServerTests, CreateLockTest) {
   CreateDestroyReply res;
   
   PlumpServiceImpl service;
-  service.CreateLock(&ctx, &req, &res);
+  Status s = service.CreateLock(&ctx, &req, &res);
+  EXPECT_TRUE(s.ok());
   EXPECT_EQ(res.success(), true);
   EXPECT_EQ(res.message(), "Lock: " + lock_name + " successfully created");
-  //EXPECT_EQ(service.locks_[0], lock_name);
 }
 
 TEST(PlumpClientTests, CreateLockTest) {

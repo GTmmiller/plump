@@ -34,7 +34,7 @@ using plump::ListRequest;
 using plump::ListReply;
 using plump::Plump;
 
-PlumpClient::PlumpClient(std::shared_ptr<Channel> channel) : stub_(Plump::NewStub(channel)) {}
+PlumpClient::PlumpClient(std::unique_ptr<Plump::StubInterface> stub) : stub_(std::move(stub)) {}
 
 std::string PlumpClient::CreateLock(const std::string& lock_name) {
   // Prime request

@@ -11,12 +11,11 @@ using grpc::Channel;
 
 class PlumpClient {
   public:
-    PlumpClient(std::shared_ptr<Channel> channel);
+    explicit PlumpClient(std::unique_ptr<Plump::StubInterface> stub);
     std::string CreateLock(const std::string& lock_name);
     std::string ListLocks();
   private:
-    std::unique_ptr<Plump::Stub> stub_;
+    std::unique_ptr<Plump::StubInterface> stub_;
 };
-
 
 #endif
