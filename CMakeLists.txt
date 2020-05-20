@@ -58,34 +58,33 @@ endif()
 
 
 # Proto file
-get_filename_component(hw_proto "protos/helloworld.proto" ABSOLUTE)
-get_filename_component(hw_proto_path "${hw_proto}" PATH)
+get_filename_component(plump_proto "protos/plump.proto" ABSOLUTE)
+get_filename_component(plump_proto_path "${plump_proto}" PATH)
 
 # Generated sources
-set(hw_proto_srcs "${CMAKE_CURRENT_BINARY_DIR}/helloworld.pb.cc")
-set(hw_proto_hdrs "${CMAKE_CURRENT_BINARY_DIR}/helloworld.pb.h")
-set(hw_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/helloworld.grpc.pb.cc")
-set(hw_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/helloworld.grpc.pb.h")
+set(plump_proto_srcs "${CMAKE_CURRENT_BINARY_DIR}/plump.pb.cc")
+set(plump_proto_hdrs "${CMAKE_CURRENT_BINARY_DIR}/plump.pb.h")
+set(plump_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/plump.grpc.pb.cc")
+set(plump_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/plump.grpc.pb.h")
 add_custom_command(
-      OUTPUT "${hw_proto_srcs}" "${hw_proto_hdrs}" "${hw_grpc_srcs}" "${hw_grpc_hdrs}"
+      OUTPUT "${plump_proto_srcs}" "${plump_proto_hdrs}" "${plump_grpc_srcs}" "${plump_grpc_hdrs}"
       COMMAND ${_PROTOBUF_PROTOC}
       ARGS --grpc_out "${CMAKE_CURRENT_BINARY_DIR}"
         --cpp_out "${CMAKE_CURRENT_BINARY_DIR}"
-        -I "${hw_proto_path}"
+        -I "${plump_proto_path}"
         --plugin=protoc-gen-grpc="${_GRPC_CPP_PLUGIN_EXECUTABLE}"
-        "${hw_proto}"
-      DEPENDS "${hw_proto}")
+        "${plump_proto}"
+      DEPENDS "${plump_proto}")
 
 # Include generated *.pb.h files
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
-# Targets greeter_[async_](client|server)
+# Targets plump client|server
 foreach(_target
-  greeter_client greeter_server
-  greeter_async_client greeter_async_client2 greeter_async_server)
+  plump_client plump_server)
   add_executable(${_target} "${_target}.cc"
-    ${hw_proto_srcs}
-    ${hw_grpc_srcs})
+    ${plump_proto_srcs}
+    ${plump_grpc_srcs})
   target_link_libraries(${_target}
     ${_REFLECTION}
     ${_GRPC_GRPCPP}
