@@ -19,6 +19,8 @@
 
 cmake_minimum_required(VERSION 3.11)
 
+set(CMAKE_CXX_STANDARD 11)
+
 project(HelloWorld C CXX)
 
 if(NOT MSVC)
@@ -56,19 +58,6 @@ else()
   set(_GRPC_CPP_PLUGIN_EXECUTABLE $<TARGET_FILE:grpc_cpp_plugin>)
 endif()
 
-message(STATUS "Using googletest via add_subdirectory (FetchContent).")
-FetchContent_Declare(
-  googletest
-  GIT_REPOSITORY https://github.com/google/googletest.git
-  GIT_TAG        release-1.10.0
-)
-
-FetchContent_GetProperties(googletest)
-if(NOT googletest_POPULATED)
-  FetchContent_Populate(googletest)
-  add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
-endif()
-
 # Proto file
 get_filename_component(plump_proto "protos/plump.proto" ABSOLUTE)
 get_filename_component(plump_proto_path "${plump_proto}" PATH)
@@ -103,19 +92,5 @@ foreach(_target
     ${_PROTOBUF_LIBPROTOBUF})
 endforeach()
 
-# set up dependencies for testing
-include(GoogleTest)
-
 enable_testing()
-add_executable(plump_unittest plump_unittest.cc)
-target_link_libraries(
-  plump_unittest
-  gtest
-  gmock
-  gtest_main
-  ${_REFLECTION}
-  ${_GRPC_GRPCPP}
-  ${_PROTOBUF_LIBPROTOBUF}
-)
-
-gtest_discover_tests(plump_unittest)
+add_subdirectory(test)
