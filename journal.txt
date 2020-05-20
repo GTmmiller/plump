@@ -1,0 +1,9 @@
+4/30/2020
+
+Messed around with how to use grpc as a dependency. Settled on just importing the project to the Vagrant
+machine.
+
+5/1/2020
+
+Figured out how to import and build grpc via cmake and learned more about what cmake is supposed to do.
+Brought in the example hello world project, compiled it and ran it successfully.
