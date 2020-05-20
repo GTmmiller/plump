@@ -94,7 +94,7 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 # Targets plump client|server
 foreach(_target
   plump_client plump_server)
-  add_executable(${_target} "${_target}.cc"
+  add_executable(${_target} "${_target}.cc" "${_target}.h"
     ${plump_proto_srcs}
     ${plump_grpc_srcs})
   target_link_libraries(${_target}
