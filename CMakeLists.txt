@@ -80,17 +80,48 @@ add_custom_command(
 # Include generated *.pb.h files
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
+# make the two libraries
+add_library(plump_server_lib plump_server.h plump_server.cc ${plump_proto_srcs} ${plump_grpc_srcs})
+target_link_libraries(plump_server_lib
+  ${_REFLECTION}
+  ${_GRPC_GRPCPP}
+  ${_PROTOBUF_LIBPROTOBUF})
+
+add_library(plump_client_lib plump_client.h plump_client.cc ${plump_proto_srcs} ${plump_grpc_srcs})
+target_link_libraries(plump_client_lib
+  ${_REFLECTION}
+  ${_GRPC_GRPCPP}
+  ${_PROTOBUF_LIBPROTOBUF})
+
 # Targets plump client|server
-foreach(_target
-  plump_client plump_server)
-  add_executable(${_target} "${_target}.cc" "${_target}.h"
-    ${plump_proto_srcs}
-    ${plump_grpc_srcs})
-  target_link_libraries(${_target}
-    ${_REFLECTION}
-    ${_GRPC_GRPCPP}
-    ${_PROTOBUF_LIBPROTOBUF})
-endforeach()
+#foreach(_target
+#  plump_client plump_server)
+#  add_executable(${_target} "${_target}.cc" "${_target}.h"
+#    ${plump_proto_srcs}
+#    ${plump_grpc_srcs})
+#  target_link_libraries(${_target}
+#    ${_REFLECTION}
+#    ${_GRPC_GRPCPP}
+#    ${_PROTOBUF_LIBPROTOBUF})
+#endforeach()
+
+add_executable(plump_client client_main.cc
+  ${plump_proto_srcs}
+  ${plump_grpc_srcs})
+target_link_libraries(plump_client
+  ${_REFLECTION}
+  ${_GRPC_GRPCPP}
+  ${_PROTOBUF_LIBPROTOBUF}
+  plump_client_lib)
+
+add_executable(plump_server server_main.cc
+  ${plump_proto_srcs}
+  ${plump_grpc_srcs})
+target_link_libraries(plump_server
+  ${_REFLECTION}
+  ${_GRPC_GRPCPP}
+  ${_PROTOBUF_LIBPROTOBUF}
+  plump_server_lib)
 
 enable_testing()
 add_subdirectory(test)

@@ -22,6 +22,7 @@
 
 #include <grpcpp/grpcpp.h>
 #include "plump.grpc.pb.h"
+#include "plump_client.h"
 
 using grpc::Channel;
 using grpc::ClientContext;
@@ -33,92 +34,49 @@ using plump::ListRequest;
 using plump::ListReply;
 using plump::Plump;
 
-class PlumpClient {
-  public:
-    PlumpClient(std::shared_ptr<Channel> channel) : stub_(Plump::NewStub(channel)) {}
+PlumpClient::PlumpClient(std::shared_ptr<Channel> channel) : stub_(Plump::NewStub(channel)) {}
 
-    std::string CreateLock(const std::string& lock_name) {
-      // Prime request
-      CreateDestroyRequest request;
-      request.set_lock_name(lock_name);
+std::string PlumpClient::CreateLock(const std::string& lock_name) {
+  // Prime request
+  CreateDestroyRequest request;
+  request.set_lock_name(lock_name);
 
-      // Create reply and context
-      CreateDestroyReply reply;
-      ClientContext context;
+  // Create reply and context
+  CreateDestroyReply reply;
+  ClientContext context;
 
-      // Perform RPC
-      Status status = stub_->CreateLock(&context, request, &reply);
+  // Perform RPC
+  Status status = stub_->CreateLock(&context, request, &reply);
 
-      // Act upon its status.
-      if (status.ok() && reply.success()) {
-        return reply.message();
-      } else {
-        std::cout << status.error_code() << ": " << status.error_message()
-                  << std::endl;
-        return "RPC failed";
-      }
-    }
-
-    std::string ListLocks() {
-      // Create reply and context
-      ListRequest request;
-      ListReply reply;
-      ClientContext context;
-
-      // Perform RPC
-      Status status = stub_->ListLocks(&context, request, &reply);
-
-      // Act upon its status.
-      if (status.ok()) {
-        for (auto start = reply.lock_names().begin(); start <
-          reply.lock_names().end(); start++) {
-          std::cout << *start << std::endl;
-        }
-        return "cool";
-      } else {
-        std::cout << status.error_code() << ": " << status.error_message()
-                  << std::endl;
-        return "RPC failed";
-      }
-    }
-  
-  private:
-    std::unique_ptr<Plump::Stub> stub_;
-};
-
-int main(int argc, char** argv) {
-  // Instantiate the client. It requires a channel, out of which the actual RPCs
-  // are created. This channel models a connection to an endpoint specified by
-  // the argument "--target=" which is the only expected argument.
-  // We indicate that the channel isn't authenticated (use of
-  // InsecureChannelCredentials()).
-  std::string target_str;
-  std::string arg_str("--target");
-  if (argc > 1) {
-    std::string arg_val = argv[1];
-    size_t start_pos = arg_val.find(arg_str);
-    if (start_pos != std::string::npos) {
-      start_pos += arg_str.size();
-      if (arg_val[start_pos] == '=') {
-        target_str = arg_val.substr(start_pos + 1);
-      } else {
-        std::cout << "The only correct argument syntax is --target=" << std::endl;
-        return 0;
-      }
-    } else {
-      std::cout << "The only acceptable argument is --target=" << std::endl;
-      return 0;
-    }
+  // Act upon its status.
+  if (status.ok() && reply.success()) {
+    return reply.message();
   } else {
-    target_str = "localhost:50051";
+    std::cout << status.error_code() << ": " << status.error_message()
+              << std::endl;
+    return "RPC failed";
   }
-  PlumpClient plump(grpc::CreateChannel(
-      target_str, grpc::InsecureChannelCredentials()));
-  std::string lock_name("database");
-  std::string reply = plump.CreateLock(lock_name);
-  std::cout << reply << std::endl;
+}
 
-  reply = plump.ListLocks();
+std::string PlumpClient::ListLocks() {
+  // Create reply and context
+  ListRequest request;
+  ListReply reply;
+  ClientContext context;
 
-  return 0;
+  // Perform RPC
+  Status status = stub_->ListLocks(&context, request, &reply);
+
+  // Act upon its status.
+  if (status.ok()) {
+    for (auto start = reply.lock_names().begin(); start <
+      reply.lock_names().end(); start++) {
+      std::cout << *start << std::endl;
+    }
+    return "cool";
+  } else {
+    std::cout << status.error_code() << ": " << status.error_message()
+              << std::endl;
+    return "RPC failed";
+  }
 }
