@@ -26,8 +26,11 @@
 using grpc::Channel;
 using grpc::ClientContext;
 using grpc::Status;
+
 using plump::CreateDestroyRequest;
 using plump::CreateDestroyReply;
+using plump::ListRequest;
+using plump::ListReply;
 using plump::Plump;
 
 class PlumpClient {
@@ -49,6 +52,29 @@ class PlumpClient {
       // Act upon its status.
       if (status.ok() && reply.success()) {
         return reply.message();
+      } else {
+        std::cout << status.error_code() << ": " << status.error_message()
+                  << std::endl;
+        return "RPC failed";
+      }
+    }
+
+    std::string ListLocks() {
+      // Create reply and context
+      ListRequest request;
+      ListReply reply;
+      ClientContext context;
+
+      // Perform RPC
+      Status status = stub_->ListLocks(&context, request, &reply);
+
+      // Act upon its status.
+      if (status.ok()) {
+        for (auto start = reply.lock_names().begin(); start <
+          reply.lock_names().end(); start++) {
+          std::cout << *start << std::endl;
+        }
+        return "cool";
       } else {
         std::cout << status.error_code() << ": " << status.error_message()
                   << std::endl;
@@ -91,6 +117,8 @@ int main(int argc, char** argv) {
   std::string lock_name("database");
   std::string reply = plump.CreateLock(lock_name);
   std::cout << reply << std::endl;
+
+  reply = plump.ListLocks();
 
   return 0;
 }

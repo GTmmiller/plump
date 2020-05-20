@@ -19,6 +19,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
@@ -31,18 +32,31 @@ using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
 using grpc::Status;
+
 using plump::CreateDestroyRequest;
 using plump::CreateDestroyReply;
+using plump::ListRequest;
+using plump::ListReply;
 using plump::Plump;
 
 class PlumpServiceImpl final : public Plump::Service {
   Status CreateLock(ServerContext* context, const CreateDestroyRequest* request,
                     CreateDestroyReply* reply) override {
-    
     reply->set_success(true);
     reply->set_message("Lock: " + request->lock_name() + " successfully created");
+    locks_.push_back(request->lock_name());
     return Status::OK;
   }
+
+  Status ListLocks(ServerContext* context, const ListRequest* request, ListReply* reply) override {
+    for(auto start = locks_.begin(); start < locks_.end(); start++) {
+      reply->add_lock_names(*start);
+    }
+    return Status::OK;
+  }
+
+  private:
+    std::vector<std::string> locks_;
 };
 
 void RunServer() {
@@ -66,38 +80,6 @@ void RunServer() {
   server->Wait();
 }
 
-/*
-// Logic and data behind the server's behavior.
-class GreeterServiceImpl final : public Greeter::Service {
-  Status SayHello(ServerContext* context, const HelloRequest* request,
-                  HelloReply* reply) override {
-    std::string prefix("Hello ");
-    reply->set_message(prefix + request->name());
-    return Status::OK;
-  }
-};
-
-void RunServer() {
-  std::string server_address("0.0.0.0:50051");
-  GreeterServiceImpl service;
-
-  grpc::EnableDefaultHealthCheckService(true);
-  grpc::reflection::InitProtoReflectionServerBuilderPlugin();
-  ServerBuilder builder;
-  // Listen on the given address without any authentication mechanism.
-  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
-  // Register "service" as the instance through which we'll communicate with
-  // clients. In this case it corresponds to an *synchronous* service.
-  builder.RegisterService(&service);
-  // Finally assemble the server.
-  std::unique_ptr<Server> server(builder.BuildAndStart());
-  std::cout << "Server listening on " << server_address << std::endl;
-
-  // Wait for the server to shutdown. Note that some other thread must be
-  // responsible for shutting down the server for this call to ever return.
-  server->Wait();
-}
-*/
 int main(int argc, char** argv) {
   RunServer();
 
