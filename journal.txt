@@ -10,4 +10,5 @@ Brought in the example hello world project, compiled it and ran it successfully.
 
 5/8/2020
 
-Set up the proto file and did a simple hello world with the new functions for the service.
+Set up the proto file and did a simple hello world with the new functions for the service. Going to add google
+tests support to make development easier to do.
