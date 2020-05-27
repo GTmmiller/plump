@@ -73,7 +73,7 @@ add_custom_command(
       ARGS --grpc_out "${CMAKE_CURRENT_BINARY_DIR}"
         --cpp_out "${CMAKE_CURRENT_BINARY_DIR}"
         -I "${plump_proto_path}"
-        --grpc_out=generate_mock_code=true:"${plump_proto_path}"
+        --grpc_out=generate_mock_code=true:.
         --plugin=protoc-gen-grpc="${_GRPC_CPP_PLUGIN_EXECUTABLE}"
         "${plump_proto}"
       DEPENDS "${plump_proto}")
