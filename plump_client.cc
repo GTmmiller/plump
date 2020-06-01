@@ -52,13 +52,32 @@ std::string PlumpClient::CreateLock(const std::string& lock_name) {
   if (status.ok() && reply.success()) {
     return reply.message();
   } else {
-    std::cout << status.error_code() << ": " << status.error_message()
-              << std::endl;
-    return "RPC failed";
+    throw status;
   }
 }
 
-std::string PlumpClient::ListLocks() {
+/**
+ * Returns true if the lock is destroyed and false if the lock was not destroyed
+ * a lock won't be destroyed if it was never in the service in the first place
+ * or if more than one client tried to delete at once/
+ */
+bool PlumpClient::DestroyLock(const std::string& lock_name) {
+  CreateDestroyRequest request;
+  request.set_lock_name(lock_name);
+
+  // Create reply and context
+  CreateDestroyReply reply;
+  ClientContext context;
+
+  Status status = stub_->DestroyLock(&context, request, &reply);
+  if (status.ok()) {
+    return reply.success();
+  } else {
+    throw status;
+  }
+}
+
+std::vector<std::string> PlumpClient::ListLocks() {
   // Create reply and context
   ListRequest request;
   ListReply reply;
@@ -69,14 +88,15 @@ std::string PlumpClient::ListLocks() {
 
   // Act upon its status.
   if (status.ok()) {
+    // Copy the lock names to a vector and return
+    std::vector<std::string> list;
     for (auto start = reply.lock_names().begin(); start <
       reply.lock_names().end(); start++) {
-      std::cout << *start << std::endl;
+      list.push_back(*start);
     }
-    return "cool";
+    return list;
   } else {
-    std::cout << status.error_code() << ": " << status.error_message()
-              << std::endl;
-    return "RPC failed";
+    // Should throw an error
+    throw status;
   }
 }

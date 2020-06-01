@@ -18,6 +18,7 @@
 
 #include <iostream>
 #include <memory>
+#include <algorithm>
 
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
@@ -31,12 +32,26 @@ Status PlumpServiceImpl::CreateLock(ServerContext* context, const CreateDestroyR
                   CreateDestroyReply* reply) {
   reply->set_success(true);
   reply->set_message("Lock: " + request->lock_name() + " successfully created");
-  locks_.push_back(request->lock_name());
+  locks_.insert(request->lock_name());
+  return Status::OK;
+}
+
+Status PlumpServiceImpl::DestroyLock(ServerContext* context, const CreateDestroyRequest* request,
+                  CreateDestroyReply* reply) {
+  // Check if this lock exists, if it does then destroy it
+  if (locks_.count(request->lock_name())) {
+    locks_.erase(request->lock_name());
+    reply->set_success(true);
+    reply->set_message("Lock: " + request->lock_name() + " has been destroyed");
+  } else {
+    reply->set_success(false);
+    reply->set_message("Lock: " + request->lock_name() + " does not exist");
+  }
   return Status::OK;
 }
 
 Status PlumpServiceImpl::ListLocks(ServerContext* context, const ListRequest* request, ListReply* reply) {
-  for(auto start = locks_.begin(); start < locks_.end(); start++) {
+  for(auto start = locks_.begin(); start != locks_.end(); start++) {
     reply->add_lock_names(*start);
   }
   return Status::OK;

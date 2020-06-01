@@ -34,10 +34,18 @@ int main(int argc, char** argv) {
   
   PlumpClient plump(std::move(stub));
   std::string lock_name("database");
-  std::string reply = plump.CreateLock(lock_name);
-  std::cout << reply << std::endl;
+  try {
+    std::string reply = plump.CreateLock(lock_name);
+    std::cout << reply << std::endl;
+    std::vector<std::string> locks = plump.ListLocks();
+    for (auto lock = locks.begin(); lock != locks.end(); lock++) {
+      std::cout << *lock << std::endl;
+    }
+  } catch (grpc::Status status) {
+    std::cout << "RPC failed with code: " << status.error_code() << ": " << status.error_message() <<std::endl;
+  }
+  
 
-  reply = plump.ListLocks();
 
   return 0;
 }

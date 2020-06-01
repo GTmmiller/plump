@@ -3,7 +3,7 @@
 
 #include <memory>
 #include <string>
-#include <vector>
+#include <set>
 
 #include <grpcpp/grpcpp.h>
 
@@ -24,10 +24,11 @@ using plump::Plump;
 class PlumpServiceImpl final : public Plump::Service {
   public:
     Status CreateLock(ServerContext* context, const CreateDestroyRequest* request, CreateDestroyReply* reply) override;
+    Status DestroyLock(ServerContext* context, const CreateDestroyRequest* request, CreateDestroyReply* reply) override;
     Status ListLocks(ServerContext* context, const ListRequest* request, ListReply* reply) override;
 
   private:
-    std::vector<std::string> locks_;
+    std::set<std::string> locks_;
 };
 
 
