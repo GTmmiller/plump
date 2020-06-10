@@ -3,7 +3,7 @@
 
 #include <memory>
 #include <string>
-#include <set>
+#include <map>
 
 #include <grpcpp/grpcpp.h>
 
@@ -15,6 +15,9 @@ using grpc::ServerContext;
 
 using plump::CreateDestroyRequest;
 using plump::CreateDestroyReply;
+using plump::SequencerRequest;
+using plump::SequencerReply;
+
 using plump::ListRequest;
 using plump::ListReply;
 using plump::Plump;
@@ -26,9 +29,11 @@ class PlumpServiceImpl final : public Plump::Service {
     Status CreateLock(ServerContext* context, const CreateDestroyRequest* request, CreateDestroyReply* reply) override;
     Status DestroyLock(ServerContext* context, const CreateDestroyRequest* request, CreateDestroyReply* reply) override;
     Status ListLocks(ServerContext* context, const ListRequest* request, ListReply* reply) override;
+    Status GetSequencer(ServerContext* context, const SequencerRequest* request, SequencerReply* reply) override;
 
   private:
-    std::set<std::string> locks_;
+    std::map<std::string, uint32_t> locks_;
+    std::map<std::string, std::map<uint32_t, std::string>> lock_sequencers_;
 };
 
 

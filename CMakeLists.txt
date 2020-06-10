@@ -30,6 +30,7 @@ else()
 endif()
 
 find_package(Threads REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 # Another way is to use CMake's FetchContent module to clone gRPC at
 # configure time. This makes gRPC's source code available to your project,
@@ -57,6 +58,7 @@ if(CMAKE_CROSSCOMPILING)
 else()
   set(_GRPC_CPP_PLUGIN_EXECUTABLE $<TARGET_FILE:grpc_cpp_plugin>)
 endif()
+
 
 # Proto file
 get_filename_component(plump_proto "protos/plump.proto" ABSOLUTE)
@@ -86,7 +88,8 @@ add_library(plump_server_lib plump_server.h plump_server.cc ${plump_proto_srcs} 
 target_link_libraries(plump_server_lib
   ${_REFLECTION}
   ${_GRPC_GRPCPP}
-  ${_PROTOBUF_LIBPROTOBUF})
+  ${_PROTOBUF_LIBPROTOBUF}
+  OpenSSL::SSL)
 
 add_library(plump_client_lib plump_client.h plump_client.cc ${plump_proto_srcs} ${plump_grpc_srcs})
 target_link_libraries(plump_client_lib
