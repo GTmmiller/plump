@@ -3,6 +3,8 @@
 
 #include <memory>
 #include <vector>
+#include <utility>
+
 #include <grpcpp/grpcpp.h>
 #include "plump.grpc.pb.h"
 
@@ -15,6 +17,7 @@ class PlumpClient {
     explicit PlumpClient(std::unique_ptr<Plump::StubInterface> stub);
     std::string CreateLock(const std::string& lock_name);
     bool DestroyLock(const std::string& lock_name);
+    std::pair<uint32_t, std::string> GetSequencer(const std::string& lock_name);
     std::vector<std::string> ListLocks();
   private:
     std::unique_ptr<Plump::StubInterface> stub_;

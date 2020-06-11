@@ -53,6 +53,17 @@ CreateDestroyReply ServerDestroyLock(Plump::Service *service, std::string lock_n
   return res;
 }
 
+SequencerReply ServerGetSequencer(Plump::Service *service, std::string lock_name) {
+  ServerContext ctx;
+  SequencerRequest req;
+  SequencerReply res;
+
+  req.set_lock_name(lock_name);
+  Status s = service->GetSequencer(&ctx, &req, &res);
+  EXPECT_TRUE(s.ok());
+  return res;
+}
+
 ListReply ServerListLocks(Plump::Service *service) {
   ServerContext ctx;
   ListRequest req;
@@ -119,6 +130,15 @@ TEST(PlumpServer_DestroyLockTests, NoLockTest) {
   EXPECT_EQ(res.message(), "Lock: " + unknown_lock + " does not exist");
 }
 
+TEST(PlumpServer_GetSequencerTests, GetSequencerTest) {
+  PlumpServiceImpl service;
+  std::string lock_name("john");
+  ServerCreateLock(&service, lock_name);
+  SequencerReply res = ServerGetSequencer(&service, lock_name);
+  EXPECT_EQ(res.sequencer(), 0);
+  EXPECT_GT(res.key().size(), 11);
+  EXPECT_LT(res.key().size(), 17);
+}
 
 
 TEST(PlumpClient_CreateLockTests, CreateNormalLockTest) {
@@ -156,6 +176,22 @@ TEST(PlumpClient_DestroyLock, DestroyLockTest) {
   PlumpClient client(std::move(stub));
   EXPECT_TRUE(client.DestroyLock(valid_lock));
 } 
+
+TEST(PlumpClient_GetSequencer, GetSequencerTest) {
+  std::string lock_name("lock");
+  std::string key("test_key");
+  auto stub = std::unique_ptr<MockPlumpStub>(new MockPlumpStub);
+  SequencerReply res;
+  res.set_sequencer(0);
+  res.set_key(key);
+  EXPECT_CALL(*stub, GetSequencer(_,_,_))
+    .Times(AtLeast(1))
+    .WillOnce(DoAll(SetArgPointee<2>(res), Return(Status::OK)));
+  PlumpClient client(std::move(stub));
+  std::pair<uint32_t, std::string> sequencer_pair = client.GetSequencer(lock_name);
+  EXPECT_EQ(sequencer_pair.first, 0);
+  EXPECT_EQ(sequencer_pair.second, key);
+}
 
 TEST(PlumpClient_ListLocksTests, ListLocksTest) {
   std::string lock_name_one("lock_name_one");

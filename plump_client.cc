@@ -32,6 +32,9 @@ using plump::CreateDestroyRequest;
 using plump::CreateDestroyReply;
 using plump::ListRequest;
 using plump::ListReply;
+using plump::SequencerRequest;
+using plump::SequencerReply;
+
 using plump::Plump;
 
 PlumpClient::PlumpClient(std::unique_ptr<Plump::StubInterface> stub) : stub_(std::move(stub)) {}
@@ -72,6 +75,19 @@ bool PlumpClient::DestroyLock(const std::string& lock_name) {
   Status status = stub_->DestroyLock(&context, request, &reply);
   if (status.ok()) {
     return reply.success();
+  } else {
+    throw status;
+  }
+}
+
+std::pair<uint32_t, std::string> PlumpClient::GetSequencer(const std::string& lock_name) {
+  SequencerRequest request;
+  SequencerReply reply;
+  ClientContext context;
+
+  Status status = stub_->GetSequencer(&context, request, &reply);
+  if (status.ok()) {
+    return std::pair<uint32_t, std::string>(reply.sequencer(), reply.key());
   } else {
     throw status;
   }
