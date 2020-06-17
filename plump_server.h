@@ -4,6 +4,8 @@
 #include <memory>
 #include <string>
 #include <map>
+#include <list>
+#include <ctime>
 
 #include <grpcpp/grpcpp.h>
 
@@ -17,12 +19,19 @@ using plump::CreateDestroyRequest;
 using plump::CreateDestroyReply;
 using plump::SequencerRequest;
 using plump::SequencerReply;
-
 using plump::ListRequest;
 using plump::ListReply;
+using plump::LockRequest;
+using plump::LockReply;
+
 using plump::Plump;
 
-
+struct Sequencer {
+  std::string lock_name;
+  uint32_t seq_num;
+  std::string key_hash;
+  time_t expiration;
+};
 
 class PlumpServiceImpl final : public Plump::Service {
   public:
@@ -30,11 +39,21 @@ class PlumpServiceImpl final : public Plump::Service {
     Status DestroyLock(ServerContext* context, const CreateDestroyRequest* request, CreateDestroyReply* reply) override;
     Status ListLocks(ServerContext* context, const ListRequest* request, ListReply* reply) override;
     Status GetSequencer(ServerContext* context, const SequencerRequest* request, SequencerReply* reply) override;
+    Status GetLock(ServerContext* context, const LockRequest* request, LockReply* reply) override;
 
   private:
-    std::map<std::string, uint32_t> locks_;
-    std::map<std::string, std::map<uint32_t, std::string>> lock_sequencers_;
+    std::map<std::string, uint32_t> lock_next_seq_;
+    std::map<std::string, std::list<Sequencer>> lock_sequencers_;
+    std::map<std::string, bool> lock_reservations_;
+
+    bool LockExists_(const std::string& lock_name);
+    void AddLock_(const std::string& lock_name);
+    void DestroyLock_(const std::string& lock_name);
+    uint32_t GetNextSequencer_(const std::string& lock_name);
+    void SaveSequencerHash_(const Sequencer& seq);
+    std::set<std::string> ListLockNames_();
 };
+
 
 
 void RunServer();

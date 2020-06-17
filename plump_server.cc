@@ -24,6 +24,7 @@
 #include <memory>
 #include <algorithm>
 #include <random>
+#include <mutex>
 
 
 #include <grpcpp/grpcpp.h>
@@ -46,14 +47,38 @@ std::random_device engine_;
 std::mt19937 generator_(engine_());
 std::uniform_int_distribution<int> sequence_length_(12,16);
 std::uniform_int_distribution<int> char_distribution_(0, valid_chars_.size() - 1);
+std::mutex locks_mutex_;
 
+// helper functions
+std::string HashString_(const std::string& str) {
+  // https://stackoverflow.com/questions/2262386/generate-sha256-with-openssl-and-c
+  // Hashing the password using open ssl
+  EVP_MD_CTX *md_context = EVP_MD_CTX_new();
+  EVP_DigestInit_ex(md_context, EVP_sha256(), NULL);
+  // Note, this wouldn't work with unicode per-se, requires a byte count
+  EVP_DigestUpdate(md_context, str.c_str(), str.length());
+  
+  unsigned char str_hash[EVP_MAX_MD_SIZE];
+  unsigned int str_hash_length = 0;
+  
+  EVP_DigestFinal_ex(md_context, str_hash, &str_hash_length);
+  std::stringstream stream;
+  for(unsigned int i = 0; i < str_hash_length; i++) {
+    stream << std::hex << std::setw(2) << std::setfill('0') << (int)str_hash[i];
+  }
+
+  EVP_MD_CTX_free(md_context); 
+
+  return stream.str();
+}
+
+// Public
 Status PlumpServiceImpl::CreateLock(ServerContext* context, const CreateDestroyRequest* request,
                   CreateDestroyReply* reply) {
   // Better unit test needed
   const std::string lock_name(request->lock_name());
-  if (locks_.count(lock_name) == 0) {
-    locks_[lock_name] = 0;
-    lock_sequencers_[lock_name] = std::map<uint32_t, std::string>();
+  if (!LockExists_(lock_name)) {
+    AddLock_(lock_name);
     reply->set_success(true);
     reply->set_message("Lock: " + lock_name + " successfully created");
   } else {
@@ -66,8 +91,9 @@ Status PlumpServiceImpl::CreateLock(ServerContext* context, const CreateDestroyR
 Status PlumpServiceImpl::DestroyLock(ServerContext* context, const CreateDestroyRequest* request,
                   CreateDestroyReply* reply) {
   // Check if this lock exists, if it does then destroy it
-  if (locks_.count(request->lock_name())) {
-    locks_.erase(request->lock_name());
+  if (LockExists_(request->lock_name())) {
+    DestroyLock_(request->lock_name());
+    
     reply->set_success(true);
     reply->set_message("Lock: " + request->lock_name() + " has been destroyed");
   } else {
@@ -79,16 +105,19 @@ Status PlumpServiceImpl::DestroyLock(ServerContext* context, const CreateDestroy
 
 Status PlumpServiceImpl::GetSequencer(ServerContext* context, const SequencerRequest* request, 
                     SequencerReply* reply) { 
-  // TODO: Better error types
+  // TODO: Better error types and tests for them
   
   // First, we check if the lock exists, if it doesn't we send an error
-  if (!locks_.count(request->lock_name())) {
+  if (!LockExists_(request->lock_name())) {
     return Status(StatusCode::NOT_FOUND, "Lock: " + request->lock_name() + " does not exist.");
   }
-
+  Sequencer new_sequencer;
+  new_sequencer.lock_name = request->lock_name();
   // since we know the lock is present, let's set and increment the sequencer
-  reply->set_sequencer(locks_[request->lock_name()]);
-  locks_[request->lock_name()] += 1;
+  new_sequencer.seq_num = GetNextSequencer_(request->lock_name());
+  // Add an expiration. default is 5 minutes from now.
+  // TODO: This should be some kind of configuration thing
+  new_sequencer.expiration = time(0) + 60 * 5;
 
   // To make the sequencer secure, we want to hand out a character sequence with it  
   // make the sequence a random number of characters between 12 - 16
@@ -98,35 +127,37 @@ Status PlumpServiceImpl::GetSequencer(ServerContext* context, const SequencerReq
   for(int i = 0; i < length; i++) {
     sequencer_key += valid_chars_[char_distribution_(generator_)];
   }
-  
-  // Save the hash, send the original password
+  // Hash the key for the sequencer object, send the key in the reply
+  new_sequencer.key_hash = HashString_(sequencer_key);
+
+
+  reply->set_sequencer(new_sequencer.seq_num);
   reply->set_key(sequencer_key);
 
-  // https://stackoverflow.com/questions/2262386/generate-sha256-with-openssl-and-c
-  // Hashing the password using open ssl
-  EVP_MD_CTX *md_context = EVP_MD_CTX_new();
-  EVP_DigestInit_ex(md_context, EVP_sha256(), NULL);
-  // Note, this wouldn't work with unicode per-se, requires a byte count
-  EVP_DigestUpdate(md_context, sequencer_key.c_str(), sequencer_key.length());
-  
-  unsigned char sequencer_hash[EVP_MAX_MD_SIZE];
-  unsigned int sequencer_hash_length = 0;
-  
-  EVP_DigestFinal_ex(md_context, sequencer_hash, &sequencer_hash_length);
-  std::stringstream stream;
-  for(unsigned int i = 0; i < sequencer_hash_length; i++) {
-    stream << std::hex << std::setw(2) << std::setfill('0') << (int)sequencer_hash[i];
+  SaveSequencerHash_(new_sequencer);
+
+  return Status::OK;
+}
+
+Status PlumpServiceImpl::GetLock(ServerContext* context, const LockRequest* request, LockReply* reply) {
+  // Check if the lock exists, if not then send an error
+  if (!LockExists_(request->lock_name())) {
+    return Status(StatusCode::NOT_FOUND, "Lock: " + request->lock_name() + " does not exist.");
   }
 
-  lock_sequencers_[request->lock_name()][reply->sequencer()] = stream.str();
-  EVP_MD_CTX_free(md_context);  
-  
+  // Check if the sequencer is the next one up
+  // WARNING: we are not doing living/dead ones right now
+  // assuming that the sequencer will always be used properly
+
+  // if the sequencer is 0 then none have been issued and an error status should be sent
+
   return Status::OK;
 }
 
 Status PlumpServiceImpl::ListLocks(ServerContext* context, const ListRequest* request, ListReply* reply) {
-  for(auto start = locks_.begin(); start != locks_.end(); start++) {
-    reply->add_lock_names(start->first);
+  std::set<std::string> lock_names = ListLockNames_();
+  for(auto name_ptr = lock_names.begin(); name_ptr != lock_names.end(); name_ptr++) {
+    reply->add_lock_names(*name_ptr);
   }
   return Status::OK;
 }
@@ -151,5 +182,43 @@ void RunServer() {
   // responsible for shutting down the server for this call to ever return.
   server->Wait();
 }
+
+// private
+bool PlumpServiceImpl::LockExists_(const std::string& lock_name) {
+  return lock_next_seq_.count(lock_name);
+}
+
+void PlumpServiceImpl::AddLock_(const std::string& lock_name) {  
+  lock_next_seq_[lock_name] = 0;
+  lock_sequencers_[lock_name] = std::list<Sequencer>();
+  lock_reservations_[lock_name] = false;
+}
+
+void PlumpServiceImpl::DestroyLock_(const std::string& lock_name) {
+  lock_next_seq_.erase(lock_name);
+  lock_sequencers_.erase(lock_name);
+  lock_reservations_.erase(lock_name);
+}
+
+uint32_t PlumpServiceImpl::GetNextSequencer_(const std::string& lock_name) {
+  uint32_t next_seq = lock_next_seq_[lock_name];
+  lock_next_seq_[lock_name] += 1;
+  return next_seq;
+}
+
+void PlumpServiceImpl::SaveSequencerHash_(const Sequencer& seq) {
+  lock_sequencers_[seq.lock_name].push_back(seq);
+}
+
+std::set<std::string> PlumpServiceImpl::ListLockNames_() {
+  std::set<std::string> lock_names;
+  for(auto start = lock_next_seq_.begin(); start != lock_next_seq_.end(); start++) {
+    lock_names.insert(start->first);
+  }
+  return lock_names;
+}
+  
+
+
 
 
