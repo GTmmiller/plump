@@ -80,14 +80,14 @@ bool PlumpClient::DestroyLock(const std::string& lock_name) {
   }
 }
 
-std::pair<uint32_t, std::string> PlumpClient::GetSequencer(const std::string& lock_name) {
+Sequencer PlumpClient::GetSequencer(const std::string& lock_name) {
   SequencerRequest request;
   SequencerReply reply;
   ClientContext context;
 
   Status status = stub_->GetSequencer(&context, request, &reply);
   if (status.ok()) {
-    return std::pair<uint32_t, std::string>(reply.sequencer(), reply.key());
+    return reply.sequencer();
   } else {
     throw status;
   }

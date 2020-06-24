@@ -135,9 +135,11 @@ TEST(PlumpServer_GetSequencerTests, GetSequencerTest) {
   std::string lock_name("john");
   ServerCreateLock(&service, lock_name);
   SequencerReply res = ServerGetSequencer(&service, lock_name);
-  EXPECT_EQ(res.sequencer(), 0);
-  EXPECT_GT(res.key().size(), 11);
-  EXPECT_LT(res.key().size(), 17);
+  EXPECT_EQ(res.sequencer().sequencer(), 0);
+  EXPECT_GT(res.sequencer().key().size(), 11);
+  EXPECT_LT(res.sequencer().key().size(), 17);
+  EXPECT_GT(res.sequencer().expiration(), time(0));
+  EXPECT_EQ(res.sequencer().lock_name(), lock_name);
 }
 
 
@@ -182,15 +184,21 @@ TEST(PlumpClient_GetSequencer, GetSequencerTest) {
   std::string key("test_key");
   auto stub = std::unique_ptr<MockPlumpStub>(new MockPlumpStub);
   SequencerReply res;
-  res.set_sequencer(0);
-  res.set_key(key);
+  Sequencer* seq = new Sequencer();
+  seq->set_lock_name(lock_name);
+  seq->set_sequencer(0);
+  seq->set_key(key);
+  seq->set_expiration(time(0));
+  res.set_allocated_sequencer(seq);
+
   EXPECT_CALL(*stub, GetSequencer(_,_,_))
     .Times(AtLeast(1))
     .WillOnce(DoAll(SetArgPointee<2>(res), Return(Status::OK)));
   PlumpClient client(std::move(stub));
-  std::pair<uint32_t, std::string> sequencer_pair = client.GetSequencer(lock_name);
-  EXPECT_EQ(sequencer_pair.first, 0);
-  EXPECT_EQ(sequencer_pair.second, key);
+  Sequencer sequencer = client.GetSequencer(lock_name);
+  EXPECT_EQ(sequencer.lock_name(), lock_name);
+  EXPECT_EQ(sequencer.key(), key);
+  EXPECT_EQ(sequencer.sequencer(), 0);
 }
 
 TEST(PlumpClient_ListLocksTests, ListLocksTest) {

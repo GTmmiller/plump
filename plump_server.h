@@ -23,15 +23,9 @@ using plump::ListRequest;
 using plump::ListReply;
 using plump::LockRequest;
 using plump::LockReply;
+using plump::Sequencer;
 
 using plump::Plump;
-
-struct Sequencer {
-  std::string lock_name;
-  uint32_t seq_num;
-  std::string key_hash;
-  time_t expiration;
-};
 
 class PlumpServiceImpl final : public Plump::Service {
   public:

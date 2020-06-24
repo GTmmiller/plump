@@ -111,13 +111,16 @@ Status PlumpServiceImpl::GetSequencer(ServerContext* context, const SequencerReq
   if (!LockExists_(request->lock_name())) {
     return Status(StatusCode::NOT_FOUND, "Lock: " + request->lock_name() + " does not exist.");
   }
-  Sequencer new_sequencer;
-  new_sequencer.lock_name = request->lock_name();
+
+  Sequencer* new_sequencer_ptr = new Sequencer();
+  new_sequencer_ptr->set_lock_name(request->lock_name());
   // since we know the lock is present, let's set and increment the sequencer
-  new_sequencer.seq_num = GetNextSequencer_(request->lock_name());
+  new_sequencer_ptr->set_sequencer(GetNextSequencer_(request->lock_name()));
   // Add an expiration. default is 5 minutes from now.
   // TODO: This should be some kind of configuration thing
-  new_sequencer.expiration = time(0) + 60 * 5;
+  new_sequencer_ptr->set_expiration(time(0) + 60 * 5);
+  std::cout << "hork" << std::endl;
+  Sequencer hash_sequencer(*new_sequencer_ptr);
 
   // To make the sequencer secure, we want to hand out a character sequence with it  
   // make the sequence a random number of characters between 12 - 16
@@ -127,29 +130,71 @@ Status PlumpServiceImpl::GetSequencer(ServerContext* context, const SequencerReq
   for(int i = 0; i < length; i++) {
     sequencer_key += valid_chars_[char_distribution_(generator_)];
   }
+  
   // Hash the key for the sequencer object, send the key in the reply
-  new_sequencer.key_hash = HashString_(sequencer_key);
+  new_sequencer_ptr->set_key(sequencer_key);
+  hash_sequencer.set_key(HashString_(sequencer_key));
+  std::cout << new_sequencer_ptr->lock_name() << std::endl;
+  reply->set_allocated_sequencer(new_sequencer_ptr);
 
-
-  reply->set_sequencer(new_sequencer.seq_num);
-  reply->set_key(sequencer_key);
-
-  SaveSequencerHash_(new_sequencer);
+  SaveSequencerHash_(hash_sequencer);
 
   return Status::OK;
 }
 
 Status PlumpServiceImpl::GetLock(ServerContext* context, const LockRequest* request, LockReply* reply) {
+  /*
   // Check if the lock exists, if not then send an error
   if (!LockExists_(request->lock_name())) {
     return Status(StatusCode::NOT_FOUND, "Lock: " + request->lock_name() + " does not exist.");
   }
+  
+  // Establish the effective time for the GetLock Request
+  time_t eff_time = time(0);
 
-  // Check if the sequencer is the next one up
+  // Pull a reference to the list of sequencers for the lock
+  std::list<Sequencer> sequencer_list = lock_sequencers_[request->lock_name()];
+  
+  // Prune to the next valid head or clear the list
+  while (sequencer_list.front().expiration < eff_time && sequencer_list.size() != 0) {
+    sequencer_list.pop_front();
+  }
+
+  // Check if the sequencer provided is the head
+  bool is_head = sequencer_list.front().seq_num == request->sequencer();
+  
+  // Get the sequencer we're going to work with (if it exists)
+  Sequencer requested_sequencer = NULL;
+  if (is_head) {
+    requested_sequencer = sequencer_list.front(); 
+  } else {
+    // Things get a little tricky here, let's try to find the sequencer first
+    std::find
+  }
+
+  
+
+  // Algorithm: Lock check -> Head Check -> Update
+  // Is it eligible
+  // first, 
+
+  // if the lock is already locked then try to update the sequencer
+  if (!lock_reservations_[request->lock_name()]) {
+    
+  }
+
+  */
+  
+
+  // Check if the sequencer being requested is the first one
+
+  // if it's expired then tell the user
+  // if it's not first and not expired then
+  // Check if the sequencer is the next one up i.e. the head of the list
   // WARNING: we are not doing living/dead ones right now
   // assuming that the sequencer will always be used properly
 
-  // if the sequencer is 0 then none have been issued and an error status should be sent
+  // If the lock cannot be obtained then the 
 
   return Status::OK;
 }
@@ -207,7 +252,7 @@ uint32_t PlumpServiceImpl::GetNextSequencer_(const std::string& lock_name) {
 }
 
 void PlumpServiceImpl::SaveSequencerHash_(const Sequencer& seq) {
-  lock_sequencers_[seq.lock_name].push_back(seq);
+  lock_sequencers_[seq.lock_name()].push_back(seq);
 }
 
 std::set<std::string> PlumpServiceImpl::ListLockNames_() {
