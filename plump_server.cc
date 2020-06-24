@@ -111,16 +111,14 @@ Status PlumpServiceImpl::GetSequencer(ServerContext* context, const SequencerReq
   if (!LockExists_(request->lock_name())) {
     return Status(StatusCode::NOT_FOUND, "Lock: " + request->lock_name() + " does not exist.");
   }
-
-  Sequencer* new_sequencer_ptr = new Sequencer();
-  new_sequencer_ptr->set_lock_name(request->lock_name());
+  reply->mutable_sequencer()->set_lock_name(request->lock_name());
   // since we know the lock is present, let's set and increment the sequencer
-  new_sequencer_ptr->set_sequencer(GetNextSequencer_(request->lock_name()));
+  reply->mutable_sequencer()->set_sequencer(GetNextSequencer_(request->lock_name()));
   // Add an expiration. default is 5 minutes from now.
   // TODO: This should be some kind of configuration thing
-  new_sequencer_ptr->set_expiration(time(0) + 60 * 5);
+  reply->mutable_sequencer()->set_expiration(time(0) + 60 * 5);
   std::cout << "hork" << std::endl;
-  Sequencer hash_sequencer(*new_sequencer_ptr);
+  Sequencer hash_sequencer(reply->sequencer());
 
   // To make the sequencer secure, we want to hand out a character sequence with it  
   // make the sequence a random number of characters between 12 - 16
@@ -132,10 +130,9 @@ Status PlumpServiceImpl::GetSequencer(ServerContext* context, const SequencerReq
   }
   
   // Hash the key for the sequencer object, send the key in the reply
-  new_sequencer_ptr->set_key(sequencer_key);
+  reply->mutable_sequencer()->set_key(sequencer_key);
   hash_sequencer.set_key(HashString_(sequencer_key));
-  std::cout << new_sequencer_ptr->lock_name() << std::endl;
-  reply->set_allocated_sequencer(new_sequencer_ptr);
+  std::cout << reply->sequencer().lock_name() << std::endl;
 
   SaveSequencerHash_(hash_sequencer);
 
