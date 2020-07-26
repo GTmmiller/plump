@@ -66,8 +66,7 @@ message KeepAliveRequest {
 
 message KeepAliveReply {
     Sequencer updated_sequencer = 1;
-    bool success = 2;
-    uint64 keep_alive_interval = 3;
+    uint64 keep_alive_interval = 2;
 }
 
 // ReleaseLock

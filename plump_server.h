@@ -24,6 +24,8 @@ using plump::ListReply;
 using plump::LockRequest;
 using plump::LockReply;
 using plump::Sequencer;
+using plump::KeepAliveRequest;
+using plump::KeepAliveReply;
 
 using plump::Plump;
 
@@ -34,6 +36,7 @@ class PlumpServiceImpl final : public Plump::Service {
     Status ListLocks(ServerContext* context, const ListRequest* request, ListReply* reply) override;
     Status GetSequencer(ServerContext* context, const SequencerRequest* request, SequencerReply* reply) override;
     Status GetLock(ServerContext* context, const LockRequest* request, LockReply* reply) override;
+    Status LockKeepAlive(ServerContext* context, const KeepAliveRequest* request, KeepAliveReply* reply) override;
 
   private:
     std::map<std::string, uint32_t> lock_next_seq_;

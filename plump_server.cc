@@ -221,8 +221,8 @@ Status PlumpServiceImpl::GetLock(ServerContext* context, const LockRequest* requ
     if (seqPtr == sequencer_list.end()) {
       // The sequencer isn't in the list, return an error message
       return Status(StatusCode::NOT_FOUND, "Your sequencer for lock: " + requestSequencer.lock_name() + " has timed out or does not exist");
-    } else if(validateSequencer_(requestSequencer, *seqPtr)) {
-      // if the sequencer is valid then we can update it
+    } else if(validateSequencer_(requestSequencer, *seqPtr) && seqPtr->expiration() > eff_time) {
+      // if the sequencer is valid and hasn't timed out then we can update it
       uint32_t newExpiration = time(0) + 60 * 5;
       seqPtr->set_expiration(newExpiration);
 
@@ -240,6 +240,52 @@ Status PlumpServiceImpl::GetLock(ServerContext* context, const LockRequest* requ
       // The sequencer isn't in the list, return an error message
       return Status(StatusCode::NOT_FOUND, "Your sequencer for lock: " + requestSequencer.lock_name() + " has timed out or does not exist");
     }
+  }
+}
+
+Status PlumpServiceImpl::LockKeepAlive(ServerContext* context, const KeepAliveRequest* request, KeepAliveReply* reply) {
+  Sequencer requestSequencer = request->sequencer();
+  if (!LockExists_(requestSequencer.lock_name())) {
+    return Status(StatusCode::NOT_FOUND, "Lock: " + requestSequencer.lock_name() + " does not exist.");
+  }
+
+  // Get the effective time to process this action
+  time_t eff_time = time(0);
+  // Pull a reference to the list of sequencers for the lock
+  std::list<Sequencer> sequencer_list = lock_sequencers_[requestSequencer.lock_name()];
+  bool lockReserved = lock_reservations_[requestSequencer.lock_name()];
+  bool headExpired = sequencer_list.front().expiration() < eff_time;
+
+  // Send an error if the lock isn't locked
+  if (!lockReserved) {
+    return Status(StatusCode::NOT_FOUND, "Lock: " + requestSequencer.lock_name() + " is not currently locked");
+  }
+
+  // If the head is expired then just unlock the lock and send an error message
+  if (headExpired) {
+    sequencer_list.front().expiration() < eff_time;
+    return Status(StatusCode::NOT_FOUND, "Lock: " + requestSequencer.lock_name() + " is not currently locked");
+  }
+
+  // Since the lock is locked and the head is not invalid, then we should verify the sequencer
+  auto seqPtr = std::lower_bound(sequencer_list.begin(), sequencer_list.end(), requestSequencer, SeqComp_);
+  if(seqPtr == sequencer_list.end()) {
+    return Status(StatusCode::NOT_FOUND, "Given sequencer for lock: " + requestSequencer.lock_name() + " has not locked the lock");
+  } else if (validateSequencer_(requestSequencer, *seqPtr)) {
+      // Update the lock holding sequencer and return
+      uint32_t newExpiration = time(0) + 60 * 5;
+      seqPtr->set_expiration(newExpiration);
+
+      reply->mutable_updated_sequencer()->set_lock_name(requestSequencer.lock_name());
+      reply->mutable_updated_sequencer()->set_sequence_number(requestSequencer.sequence_number());
+      // Think about returning the key
+      reply->mutable_updated_sequencer()->set_key(requestSequencer.key());
+      reply->mutable_updated_sequencer()->set_expiration(newExpiration);
+      
+      reply->set_keep_alive_interval(60 * 5);
+      return Status::OK;
+  } else {
+    return Status(StatusCode::NOT_FOUND, "Given sequencer for lock: " + requestSequencer.lock_name() + " has not locked the lock");
   }
 }
 
