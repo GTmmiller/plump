@@ -64,6 +64,22 @@ SequencerReply ServerGetSequencer(Plump::Service *service, std::string lock_name
   return res;
 }
 
+LockReply ServerGetLock(Plump::Service *service, const Sequencer& sequencer) {
+  ServerContext ctx;
+  LockRequest req;
+  LockReply res;
+
+  req.mutable_sequencer()->set_lock_name(sequencer.lock_name());
+  req.mutable_sequencer()->set_sequence_number(sequencer.sequence_number());
+  req.mutable_sequencer()->set_key(sequencer.key());
+  req.mutable_sequencer()->set_expiration(sequencer.expiration());
+
+  Status s = service->GetLock(&ctx, &req, &res);
+  // Ok isn't always the expected outcome
+  EXPECT_TRUE(s.ok());
+  return res;
+}
+
 ListReply ServerListLocks(Plump::Service *service) {
   ServerContext ctx;
   ListRequest req;
@@ -135,11 +151,30 @@ TEST(PlumpServer_GetSequencerTests, GetSequencerTest) {
   std::string lock_name("john");
   ServerCreateLock(&service, lock_name);
   SequencerReply res = ServerGetSequencer(&service, lock_name);
-  EXPECT_EQ(res.sequencer().sequencer(), 0);
+  EXPECT_EQ(res.sequencer().sequence_number(), 0);
   EXPECT_GT(res.sequencer().key().size(), 11);
   EXPECT_LT(res.sequencer().key().size(), 17);
   EXPECT_GT(res.sequencer().expiration(), time(0));
   EXPECT_EQ(res.sequencer().lock_name(), lock_name);
+}
+
+TEST(PlumpServer_GetLockTests, GetLockTest) {
+  PlumpServiceImpl service;
+  std::string lock_name("lock");
+  ServerCreateLock(&service, lock_name);
+  SequencerReply seqReply = ServerGetSequencer(&service, lock_name);
+  LockReply lockReply = ServerGetLock(&service, seqReply.sequencer());
+  EXPECT_TRUE(lockReply.success());
+}
+
+TEST(PlumpServer_GetLockTests, GetLockNotHead) {
+  PlumpServiceImpl service;
+  std::string lock_name("lock");
+  ServerCreateLock(&service, lock_name);
+  ServerGetSequencer(&service, lock_name);
+  SequencerReply seqReply = ServerGetSequencer(&service, lock_name);
+  LockReply lockReply = ServerGetLock(&service, seqReply.sequencer());
+  EXPECT_FALSE(lockReply.success());
 }
 
 
@@ -186,7 +221,7 @@ TEST(PlumpClient_GetSequencer, GetSequencerTest) {
   SequencerReply res;
   Sequencer* seq = new Sequencer();
   seq->set_lock_name(lock_name);
-  seq->set_sequencer(0);
+  seq->set_sequence_number(0);
   seq->set_key(key);
   seq->set_expiration(time(0));
   res.set_allocated_sequencer(seq);
@@ -198,7 +233,7 @@ TEST(PlumpClient_GetSequencer, GetSequencerTest) {
   Sequencer sequencer = client.GetSequencer(lock_name);
   EXPECT_EQ(sequencer.lock_name(), lock_name);
   EXPECT_EQ(sequencer.key(), key);
-  EXPECT_EQ(sequencer.sequencer(), 0);
+  EXPECT_EQ(sequencer.sequence_number(), 0);
 }
 
 TEST(PlumpClient_ListLocksTests, ListLocksTest) {

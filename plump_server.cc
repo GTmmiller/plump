@@ -50,6 +50,11 @@ std::uniform_int_distribution<int> char_distribution_(0, valid_chars_.size() - 1
 std::mutex locks_mutex_;
 
 // helper functions
+
+bool SeqComp_(const Sequencer& i, const Sequencer& j) {
+  return i.sequence_number() < j.sequence_number();
+}
+
 std::string HashString_(const std::string& str) {
   // https://stackoverflow.com/questions/2262386/generate-sha256-with-openssl-and-c
   // Hashing the password using open ssl
@@ -70,6 +75,16 @@ std::string HashString_(const std::string& str) {
   EVP_MD_CTX_free(md_context); 
 
   return stream.str();
+}
+
+// Will return true if the sequencers are valid and equal
+bool validateSequencer_(const Sequencer& requestSeq, const Sequencer& databaseSeq) {
+  bool lock_name = requestSeq.lock_name() == databaseSeq.lock_name();
+  bool sequence_number = requestSeq.sequence_number() == databaseSeq.sequence_number();
+  bool key = HashString_(requestSeq.key()) == databaseSeq.key();
+  bool expiration = requestSeq.expiration() == databaseSeq.expiration();
+
+  return lock_name && sequence_number && key && expiration;
 }
 
 // Public
@@ -113,7 +128,7 @@ Status PlumpServiceImpl::GetSequencer(ServerContext* context, const SequencerReq
   }
   reply->mutable_sequencer()->set_lock_name(request->lock_name());
   // since we know the lock is present, let's set and increment the sequencer
-  reply->mutable_sequencer()->set_sequencer(GetNextSequencer_(request->lock_name()));
+  reply->mutable_sequencer()->set_sequence_number(GetNextSequencer_(request->lock_name()));
   // Add an expiration. default is 5 minutes from now.
   // TODO: This should be some kind of configuration thing
   reply->mutable_sequencer()->set_expiration(time(0) + 60 * 5);
@@ -140,60 +155,92 @@ Status PlumpServiceImpl::GetSequencer(ServerContext* context, const SequencerReq
 }
 
 Status PlumpServiceImpl::GetLock(ServerContext* context, const LockRequest* request, LockReply* reply) {
-  /*
   // Check if the lock exists, if not then send an error
-  if (!LockExists_(request->lock_name())) {
-    return Status(StatusCode::NOT_FOUND, "Lock: " + request->lock_name() + " does not exist.");
+  Sequencer requestSequencer = request->sequencer();
+  if (!LockExists_(requestSequencer.lock_name())) {
+    return Status(StatusCode::NOT_FOUND, "Lock: " + requestSequencer.lock_name() + " does not exist.");
   }
-  
+
   // Establish the effective time for the GetLock Request
   time_t eff_time = time(0);
-
   // Pull a reference to the list of sequencers for the lock
-  std::list<Sequencer> sequencer_list = lock_sequencers_[request->lock_name()];
+  std::list<Sequencer> sequencer_list = lock_sequencers_[requestSequencer.lock_name()];
+
+  bool lockReserved = lock_reservations_[requestSequencer.lock_name()];
+  bool headExpired = sequencer_list.front().expiration() < eff_time;
   
-  // Prune to the next valid head or clear the list
-  while (sequencer_list.front().expiration < eff_time && sequencer_list.size() != 0) {
-    sequencer_list.pop_front();
-  }
-
-  // Check if the sequencer provided is the head
-  bool is_head = sequencer_list.front().seq_num == request->sequencer();
   
-  // Get the sequencer we're going to work with (if it exists)
-  Sequencer requested_sequencer = NULL;
-  if (is_head) {
-    requested_sequencer = sequencer_list.front(); 
-  } else {
-    // Things get a little tricky here, let's try to find the sequencer first
-    std::find
-  }
-
   
+  // If the head is expired then prune to the next valid head or clear the list
+  if (headExpired) {
+    // Prune to the next valid head or clear the list
+    while (sequencer_list.front().expiration() < eff_time && sequencer_list.size() != 0) {
+      sequencer_list.pop_front();
+    }
 
-  // Algorithm: Lock check -> Head Check -> Update
-  // Is it eligible
-  // first, 
-
-  // if the lock is already locked then try to update the sequencer
-  if (!lock_reservations_[request->lock_name()]) {
+    // unlock the lock
+    lock_reservations_[requestSequencer.lock_name()] = false;
+    lockReserved = false;
     
+    // If the list is now size zero then return an error message
+    if (sequencer_list.size() == 0) {
+      return Status(StatusCode::NOT_FOUND, "There are no available sequencers for lock: " + requestSequencer.lock_name());
+    }
   }
 
-  */
-  
+  Sequencer headSequencer = sequencer_list.front();
+  bool headMatch = validateSequencer_(requestSequencer, headSequencer);
 
-  // Check if the sequencer being requested is the first one
+  // Now we can try to lock the lock 
+  if (!lockReserved && headMatch) {
+    // If there's a head match and the lock isn't reserved then you can get the lock
+    // Lock it
+    lock_reservations_[requestSequencer.lock_name()] = true;
 
-  // if it's expired then tell the user
-  // if it's not first and not expired then
-  // Check if the sequencer is the next one up i.e. the head of the list
-  // WARNING: we are not doing living/dead ones right now
-  // assuming that the sequencer will always be used properly
+    // Send the revised sequencer
+    uint32_t newExpiration = time(0) + 60 * 5;
+    headSequencer.set_expiration(newExpiration);
 
-  // If the lock cannot be obtained then the 
+    reply->mutable_updated_sequencer()->set_lock_name(requestSequencer.lock_name());
+    reply->mutable_updated_sequencer()->set_sequence_number(requestSequencer.sequence_number());
+    reply->mutable_updated_sequencer()->set_key(requestSequencer.key());
+    reply->mutable_updated_sequencer()->set_expiration(newExpiration);
 
-  return Status::OK;
+    reply->set_success(true);
+    reply->set_keep_alive_interval(60 * 5);
+    return Status::OK;
+  } else if (lockReserved && headMatch) {
+    // If the head is matched and the lock is reserved then send an error message
+    return Status(StatusCode::ALREADY_EXISTS, "You have already locked the lock: " + requestSequencer.lock_name());
+  } else {
+    // If there isn't a head match then the expiration should update if it's findable
+    // lock is reserved but the head doesn't match
+    // lock isn't reserved and the head doesn't match
+    auto seqPtr = std::lower_bound(sequencer_list.begin(), sequencer_list.end(), requestSequencer, SeqComp_);
+    
+    if (seqPtr == sequencer_list.end()) {
+      // The sequencer isn't in the list, return an error message
+      return Status(StatusCode::NOT_FOUND, "Your sequencer for lock: " + requestSequencer.lock_name() + " has timed out or does not exist");
+    } else if(validateSequencer_(requestSequencer, *seqPtr)) {
+      // if the sequencer is valid then we can update it
+      uint32_t newExpiration = time(0) + 60 * 5;
+      seqPtr->set_expiration(newExpiration);
+
+      reply->mutable_updated_sequencer()->set_lock_name(requestSequencer.lock_name());
+      reply->mutable_updated_sequencer()->set_sequence_number(requestSequencer.sequence_number());
+      // Think about returning the key
+      reply->mutable_updated_sequencer()->set_key(requestSequencer.key());
+      reply->mutable_updated_sequencer()->set_expiration(newExpiration);
+
+      reply->set_success(false);
+      reply->set_keep_alive_interval(60 * 5);
+      return Status::OK;
+    } else {
+      // invalid sequencer, but don't let them know that we know
+      // The sequencer isn't in the list, return an error message
+      return Status(StatusCode::NOT_FOUND, "Your sequencer for lock: " + requestSequencer.lock_name() + " has timed out or does not exist");
+    }
+  }
 }
 
 Status PlumpServiceImpl::ListLocks(ServerContext* context, const ListRequest* request, ListReply* reply) {
@@ -226,6 +273,7 @@ void RunServer() {
 }
 
 // private
+
 bool PlumpServiceImpl::LockExists_(const std::string& lock_name) {
   return lock_next_seq_.count(lock_name);
 }
