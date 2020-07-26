@@ -16,13 +16,21 @@ endif()
 # set up dependencies for testing
 include(GoogleTest)
 
-add_executable(plump_unittest plump_unittest.cc)
-target_link_libraries( plump_unittest
+add_executable(plump_server_unittest plump_server_unittest.cc)
+target_link_libraries( plump_server_unittest
+  gtest
+  gmock
+  gtest_main
+  plump_server_lib
+)
+
+add_executable(plump_client_unittest plump_client_unittest.cc)
+target_link_libraries ( plump_client_unittest
   gtest
   gmock
   gtest_main
   plump_client_lib
-  plump_server_lib
 )
 
-gtest_discover_tests(plump_unittest)
+gtest_discover_tests(plump_server_unittest)
+gtest_discover_tests(plump_client_unittest)
