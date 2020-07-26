@@ -9,6 +9,8 @@
 #include <memory>
 #include <iostream>
 #include <algorithm>
+#include <thread>         // std::this_thread::sleep_for
+#include <chrono>         // std::chrono::seconds
 
 using plump::MockPlumpStub;
 using plump::Plump;
@@ -77,6 +79,21 @@ LockReply ServerGetLock(Plump::Service *service, const Sequencer& sequencer) {
   // Ok isn't always the expected outcome
   EXPECT_TRUE(s.ok());
   return res;
+}
+
+KeepAliveReply ServerLockKeepAlive(Plump::Service *service, const Sequencer& sequencer) {
+  ServerContext ctx;
+  KeepAliveRequest req;
+  KeepAliveReply reply;
+
+  req.mutable_sequencer()->set_lock_name(sequencer.lock_name());
+  req.mutable_sequencer()->set_sequence_number(sequencer.sequence_number());
+  req.mutable_sequencer()->set_key(sequencer.key());
+  req.mutable_sequencer()->set_expiration(sequencer.expiration());
+
+  Status s = service->LockKeepAlive(&ctx, &req, &reply);
+  EXPECT_TRUE(s.ok());
+  return reply;
 }
 
 ListReply ServerListLocks(Plump::Service *service) {
@@ -174,5 +191,17 @@ TEST(PlumpServer_GetLockTests, GetLockNotHead) {
   SequencerReply seqReply = ServerGetSequencer(&service, lock_name);
   LockReply lockReply = ServerGetLock(&service, seqReply.sequencer());
   EXPECT_FALSE(lockReply.success());
+}
+
+TEST(PlumpServer_GetKeepAliveTests, LockKeepAliveTest) {
+  PlumpServiceImpl service;
+  std::string lock_name("lock");
+  ServerCreateLock(&service, lock_name);
+  SequencerReply seqReply = ServerGetSequencer(&service, lock_name);
+  LockReply lockReply = ServerGetLock(&service, seqReply.sequencer());
+  // This ain't great, but I'll stub it later with chrono (maybe)
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  KeepAliveReply kaReply = ServerLockKeepAlive(&service, lockReply.updated_sequencer());
+  EXPECT_GT(kaReply.updated_sequencer().expiration(), lockReply.updated_sequencer().expiration());
 }
 
