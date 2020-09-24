@@ -37,6 +37,7 @@ class PlumpServiceImpl final : public Plump::Service {
     Status GetSequencer(ServerContext* context, const SequencerRequest* request, SequencerReply* reply) override;
     Status GetLock(ServerContext* context, const LockRequest* request, LockReply* reply) override;
     Status LockKeepAlive(ServerContext* context, const KeepAliveRequest* request, KeepAliveReply* reply) override;
+    Status ReleaseLock(ServerContext* context, const ReleaseRequest* request, ReleaseReply* reply) override;
 
   private:
     std::map<std::string, uint32_t> lock_next_seq_;

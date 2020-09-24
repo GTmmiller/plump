@@ -281,12 +281,16 @@ Status PlumpServiceImpl::LockKeepAlive(ServerContext* context, const KeepAliveRe
       // Think about returning the key
       reply->mutable_updated_sequencer()->set_key(requestSequencer.key());
       reply->mutable_updated_sequencer()->set_expiration(newExpiration);
-      
+
       reply->set_keep_alive_interval(60 * 5);
       return Status::OK;
   } else {
     return Status(StatusCode::NOT_FOUND, "Given sequencer for lock: " + requestSequencer.lock_name() + " has not locked the lock");
   }
+}
+
+Status PlumpServiceImpl::ReleaseLock(ServerContext* context, const ReleaseRequest* request, ReleaseReply* reply) {
+  // TODO: DO this
 }
 
 Status PlumpServiceImpl::ListLocks(ServerContext* context, const ListRequest* request, ListReply* reply) {
