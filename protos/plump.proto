@@ -11,7 +11,7 @@ service Plump {
     rpc LockKeepAlive (KeepAliveRequest) returns (KeepAliveReply) {}
     rpc ReleaseLock (ReleaseRequest) returns(ReleaseReply) {}
 
-    // Instrospection functions
+    // Introspection functions
     rpc WhoHasLock (WhoHasRequest) returns (WhoHasReply) {}
     rpc NextSequencer (NextSequencerRequest) returns (NextSequencerReply) {}
     rpc ListLocks (ListRequest) returns (ListReply) {}
