@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 package plump;
+option go_package = "wiligsi.com/plump/v2/protos";
 
 service Plump {
     // Application-level functions
