@@ -1,0 +1,113 @@
+syntax = "proto3";
+
+package plump;
+option java_package = "com.wiligsi.plump";
+
+service Plump {
+    // Application-level functions
+    rpc CreateLock (CreateLockRequest) returns (CreateLockReply) {}
+    rpc DestroyLock (DestroyLockRequest) returns (DestroyLockReply) {}
+    rpc GetSequencer (SequencerRequest) returns (SequencerReply) {}
+    rpc GetLock (LockRequest) returns (LockReply) {}
+    rpc LockKeepAlive (KeepAliveRequest) returns (KeepAliveReply) {}
+    rpc ReleaseLock (ReleaseRequest) returns(ReleaseReply) {}
+
+    // Instrospection functions
+    rpc WhoHasLock (WhoHasRequest) returns (WhoHasReply) {}
+    rpc NextSequencer (NextSequencerRequest) returns (NextSequencerReply) {}
+    rpc ListLocks (ListRequest) returns (ListReply) {}
+}
+
+// A container object for sequencers. Makes some of the response/replys
+// a little redundant, but it helps internally. Might put this into a
+// different file
+message Sequencer {
+    string lock_name = 1;
+    uint32 sequence_number = 2;
+    string key = 3;
+    uint64 expiration = 4;
+}
+
+// Create Lock
+message CreateLockRequest {
+    string lock_name = 1;
+}
+
+message CreateLockReply {
+}
+
+// Destroy Lock
+message DestroyLockRequest {
+    string lock_name = 1;
+}
+
+message DestroyLockReply {
+}
+
+// GetSequencer
+message SequencerRequest {
+    string lock_name = 1;
+}
+
+
+message SequencerReply {
+    Sequencer sequencer = 1;    
+}
+
+// GetLock
+message LockRequest {
+    Sequencer sequencer = 1;
+}
+
+// 
+message LockReply {
+    Sequencer updated_sequencer = 1;
+    bool success = 2;
+    uint64 keep_alive_interval = 3;
+}
+
+// KeepAlive
+message KeepAliveRequest {
+    Sequencer sequencer = 1;
+}
+
+message KeepAliveReply {
+    Sequencer updated_sequencer = 1;
+    uint64 keep_alive_interval = 2;
+}
+
+// ReleaseLock
+message ReleaseRequest {
+    Sequencer sequencer = 1;
+}
+
+message ReleaseReply {
+    bool success = 1;
+}
+
+// WhoHas
+message WhoHasRequest {
+    string lock_name = 1;
+}
+
+message WhoHasReply {
+    string ip_address = 1;
+}
+
+// Next Sequencer
+message NextSequencerRequest {
+    string lock_name = 1;
+}
+
+message NextSequencerReply {
+    string lock_name = 1;
+    uint32 sequencer_number = 2;
+}
+
+// List
+message ListRequest {
+}
+
+message ListReply {
+    repeated string lock_names = 1;
+}
