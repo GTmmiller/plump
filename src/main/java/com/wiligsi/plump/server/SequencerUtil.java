@@ -27,10 +27,10 @@ public class SequencerUtil {
             PlumpOuterClass.Sequencer local
     ) throws NoSuchAlgorithmException {
         final String hashedRequestKey = hashKey(request.getKey());
-        return local.getLockName().equals(request.getLockName()) &&
-                local.getSequenceNumber() == request.getSequenceNumber() &&
-                local.getKey().equals(hashedRequestKey) &&
-                local.getExpiration() == request.getExpiration();
+        return request.getLockName().equals(local.getLockName()) &&
+                request.getSequenceNumber() == local.getSequenceNumber() &&
+                hashedRequestKey.equals(local.getKey()) &&
+                request.getExpiration() == local.getExpiration();
     }
 
     public static String hashKey(String key) throws NoSuchAlgorithmException {
