@@ -4,8 +4,17 @@ import com.wiligsi.plump.PlumpGrpc;
 import com.wiligsi.plump.PlumpOuterClass;
 import io.grpc.stub.StreamObserver;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
+    final Map<String, Lock> locks;
+
+    public PlumpImpl() {
+        super();
+        locks = new ConcurrentHashMap<>();
+    }
 
     @Override
     public void createLock(PlumpOuterClass.CreateLockRequest request, StreamObserver<PlumpOuterClass.CreateLockReply> responseObserver) {
