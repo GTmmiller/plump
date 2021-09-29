@@ -4,12 +4,14 @@ import com.wiligsi.plump.PlumpGrpc;
 import com.wiligsi.plump.PlumpOuterClass;
 import io.grpc.stub.StreamObserver;
 
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.logging.Logger;
 
 public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
-    final Map<String, Lock> locks;
+    private static final Logger LOG = Logger.getLogger(PlumpImpl.class.getName());
+    final ConcurrentMap<LockName, Lock> locks;
 
     public PlumpImpl() {
         super();
@@ -18,6 +20,10 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
     @Override
     public void createLock(PlumpOuterClass.CreateLockRequest request, StreamObserver<PlumpOuterClass.CreateLockReply> responseObserver) {
+        // If the lock does not exist then create it
+        // Valid lock name regex
+        // lock names are equal if the same case/whatever are equal
+        // Maybe make a LockName class that encapsulates this?
         super.createLock(request, responseObserver);
     }
 

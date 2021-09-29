@@ -1,6 +1,7 @@
-package com.wiligsi.plump;
+package com.wiligsi.plump.server;
 
 
+import com.wiligsi.plump.PlumpGrpc;
 import com.wiligsi.plump.server.PlumpImpl;
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
@@ -16,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 import static com.wiligsi.plump.PlumpOuterClass.*;
 import static org.assertj.core.api.Assertions.*;
 
-public class ServerAndClientTests {
+public class ServerTests {
     private Server plumpServer;
     private ManagedChannel plumpChannel;
     private PlumpGrpc.PlumpBlockingStub plumpBlockingStub;

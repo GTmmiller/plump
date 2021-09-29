@@ -41,9 +41,9 @@ public class LockTests {
     @Test
     public void itShouldVerifyStartingState() {
         assertThat(testLock)
-                .hasFieldOrPropertyWithValue("name", TEST_LOCK_NAME)
                 .hasFieldOrPropertyWithValue("state", LockState.UNLOCKED)
                 .hasFieldOrPropertyWithValue("headSequencerNumber", Optional.empty());
+        assertThat(testLock.getName().getDisplayName()).isEqualTo(TEST_LOCK_NAME);
     }
 
     @Test

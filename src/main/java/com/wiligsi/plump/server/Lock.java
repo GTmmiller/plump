@@ -21,7 +21,7 @@ import static com.wiligsi.plump.PlumpOuterClass.*;
 public class Lock {
     private static final Logger LOG = Logger.getLogger(PlumpServer.class.getName());
 
-    final private String name;
+    final private LockName name;
     private final BlockingQueue<Integer> sequenceNumbers;
     private final ConcurrentMap<Integer, Sequencer> sequencers;
     private LockState state;
@@ -29,8 +29,8 @@ public class Lock {
     final private AtomicInteger nextSequenceNumber;
     private Clock clock;
 
-    public Lock(String name) throws NoSuchAlgorithmException {
-        this.name = name;
+    public Lock(String name) throws NoSuchAlgorithmException, IllegalArgumentException {
+        this.name = new LockName(name);
         this.clock = Clock.systemDefaultZone();
         this.sequenceNumbers = new LinkedBlockingQueue<>();
         this.sequencers = new ConcurrentHashMap<>();
@@ -76,7 +76,7 @@ public class Lock {
         final String keyHash = SequencerUtil.hashKey(nextSequencerKey);
 
         final Sequencer partialSequencer = Sequencer.newBuilder()
-                .setLockName(name)
+                .setLockName(name.getDisplayName())
                 .setSequenceNumber(nextSequencerNumber)
                 .setExpiration(nextSequencerExpiration.toEpochMilli())
                 .buildPartial();
@@ -122,7 +122,7 @@ public class Lock {
         return Optional.empty();
     }
 
-    public String getName() {
+    public LockName getName() {
         return name;
     }
 
