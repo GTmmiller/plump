@@ -4,6 +4,7 @@ import com.wiligsi.plump.PlumpGrpc;
 import com.wiligsi.plump.PlumpOuterClass;
 import io.grpc.stub.StreamObserver;
 
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Logger;
@@ -24,7 +25,37 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         // Valid lock name regex
         // lock names are equal if the same case/whatever are equal
         // Maybe make a LockName class that encapsulates this?
-        super.createLock(request, responseObserver);
+        final LockName createName;
+        try {
+            createName = new LockName(request.getLockName());
+        } catch (IllegalArgumentException exception) {
+            responseObserver.onError(exception);
+            return;
+        }
+
+        if (locks.containsKey(createName)) {
+            responseObserver.onError(
+                    new IllegalArgumentException(
+                            String.format(
+                                    "Key named '%s' already exists",
+                                    createName.getDisplayName()
+                            )
+                    )
+            );
+            return;
+        }
+
+        final Lock createLock;
+        try {
+           createLock = new Lock(createName.getDisplayName());
+        } catch (NoSuchAlgorithmException exception) {
+            responseObserver.onError(exception);
+            return;
+        }
+
+        locks.put(createName, createLock);
+        responseObserver.onNext(PlumpOuterClass.CreateLockReply.newBuilder().build());
+        responseObserver.onCompleted();
     }
 
     @Override
