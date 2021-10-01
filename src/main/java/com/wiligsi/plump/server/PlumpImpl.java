@@ -2,6 +2,7 @@ package com.wiligsi.plump.server;
 
 import com.wiligsi.plump.PlumpGrpc;
 import com.wiligsi.plump.PlumpOuterClass;
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 
 import java.security.NoSuchAlgorithmException;
@@ -21,26 +22,27 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
     @Override
     public void createLock(PlumpOuterClass.CreateLockRequest request, StreamObserver<PlumpOuterClass.CreateLockReply> responseObserver) {
-        // If the lock does not exist then create it
-        // Valid lock name regex
-        // lock names are equal if the same case/whatever are equal
-        // Maybe make a LockName class that encapsulates this?
         final LockName createName;
         try {
             createName = new LockName(request.getLockName());
         } catch (IllegalArgumentException exception) {
-            responseObserver.onError(exception);
+            responseObserver.onError(
+                    Status.INVALID_ARGUMENT
+                            .withDescription(exception.getLocalizedMessage())
+                            .withCause(exception)
+                            .asException());
             return;
         }
 
         if (locks.containsKey(createName)) {
             responseObserver.onError(
-                    new IllegalArgumentException(
-                            String.format(
-                                    "Key named '%s' already exists",
+                    Status.ALREADY_EXISTS
+                            .withDescription(
+                                    String.format(
+                                    "Lock named '%s' already exists",
                                     createName.getDisplayName()
-                            )
-                    )
+                                    )
+                            ).asException()
             );
             return;
         }

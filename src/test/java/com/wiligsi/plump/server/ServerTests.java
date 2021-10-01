@@ -2,14 +2,17 @@ package com.wiligsi.plump.server;
 
 
 import com.wiligsi.plump.PlumpGrpc;
-import com.wiligsi.plump.server.PlumpImpl;
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -67,4 +70,50 @@ public class ServerTests {
                 }
         ).doesNotThrowAnyException();
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"DamnLongLockName23232323232323", "sho", "$ymb)l*"})
+    public void itShouldRejectMalformedLockNames(String lockName) {
+        assertThatThrownBy(
+                () -> {
+                    CreateLockReply reply = plumpBlockingStub.createLock(
+                            CreateLockRequest.newBuilder()
+                                    .setLockName(lockName)
+                                    .build());
+                }
+                ).isInstanceOf(StatusRuntimeException.class)
+                .hasMessageContaining("Names should be a series of 4-12 alphanumeric characters")
+                .hasFieldOrProperty("status")
+                .extracting("status")
+                .hasFieldOrPropertyWithValue("code", Status.INVALID_ARGUMENT.getCode());
+
+    }
+
+    // Reject a duplicate lock
+    @ParameterizedTest
+    @ValueSource(strings = {"lockName", "LoCKNAme", "lockname"})
+    public void itShouldRejectDuplicateLockNames(String duplicateName) {
+        CreateLockReply reply = plumpBlockingStub.createLock(
+                CreateLockRequest.newBuilder()
+                        .setLockName("lockName")
+                        .build());
+
+        assertThatThrownBy(
+                () -> {
+                    CreateLockReply duplicateReply = plumpBlockingStub.createLock(
+                            CreateLockRequest.newBuilder()
+                                    .setLockName(duplicateName)
+                                    .build());
+                }
+        ).isInstanceOf(StatusRuntimeException.class)
+                .hasMessageContaining("Lock named")
+                .hasMessageContaining(duplicateName)
+                .hasMessageContaining("already exists")
+                .hasFieldOrProperty("status")
+                .extracting("status")
+                .hasFieldOrPropertyWithValue("code", Status.ALREADY_EXISTS.getCode());
+    }
+
+
+
 }
