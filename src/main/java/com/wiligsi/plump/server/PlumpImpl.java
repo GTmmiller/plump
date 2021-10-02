@@ -3,6 +3,7 @@ package com.wiligsi.plump.server;
 import com.wiligsi.plump.PlumpGrpc;
 import com.wiligsi.plump.PlumpOuterClass;
 import io.grpc.Status;
+import io.grpc.StatusException;
 import io.grpc.stub.StreamObserver;
 
 import java.security.NoSuchAlgorithmException;
@@ -24,28 +25,14 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     public void createLock(PlumpOuterClass.CreateLockRequest request, StreamObserver<PlumpOuterClass.CreateLockReply> responseObserver) {
         final LockName createName;
         try {
-            createName = new LockName(request.getLockName());
-        } catch (IllegalArgumentException exception) {
-            responseObserver.onError(
-                    Status.INVALID_ARGUMENT
-                            .withDescription(exception.getLocalizedMessage())
-                            .withCause(exception)
-                            .asException());
+            createName = validateLockName(request.getLockName());
+            ensureLockDoesNotExist(createName);
+        } catch (StatusException exception) {
+            responseObserver.onError(exception);
             return;
         }
 
-        if (locks.containsKey(createName)) {
-            responseObserver.onError(
-                    Status.ALREADY_EXISTS
-                            .withDescription(
-                                    String.format(
-                                    "Lock named '%s' already exists",
-                                    createName.getDisplayName()
-                                    )
-                            ).asException()
-            );
-            return;
-        }
+        // ToDo: Better exception variable names
 
         final Lock createLock;
         try {
@@ -62,7 +49,22 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
     @Override
     public void destroyLock(PlumpOuterClass.DestroyLockRequest request, StreamObserver<PlumpOuterClass.DestroyLockReply> responseObserver) {
-        super.destroyLock(request, responseObserver);
+        // TODO: make a key on creation/deletion so that only someone with the key can delete the lock
+        // validate the lock name
+        // if the lock doesn't exist then throw an error
+        // if the lock does exist then delete it and return successfully
+        final LockName destroyLockName;
+        try {
+            destroyLockName = validateLockName(request.getLockName());
+            ensureLockAlreadyExists(destroyLockName);
+        } catch (StatusException exception) {
+            responseObserver.onError(exception);
+            return;
+        }
+
+        locks.remove(destroyLockName);
+        responseObserver.onNext(PlumpOuterClass.DestroyLockReply.newBuilder().build());
+        responseObserver.onCompleted();
     }
 
     @Override
@@ -98,5 +100,41 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     @Override
     public void listLocks(PlumpOuterClass.ListRequest request, StreamObserver<PlumpOuterClass.ListReply> responseObserver) {
         super.listLocks(request, responseObserver);
+    }
+
+    protected LockName validateLockName(String lockName) throws StatusException {
+        try {
+            return new LockName(lockName);
+        } catch (IllegalArgumentException exception) {
+            throw Status.INVALID_ARGUMENT
+                            .withDescription(exception.getLocalizedMessage())
+                            .withCause(exception)
+                            .asException();
+        }
+    }
+
+    protected void ensureLockAlreadyExists(LockName lockName) throws StatusException {
+        if (!locks.containsKey(lockName)) {
+            throw Status.NOT_FOUND
+                    .withDescription(
+                            String.format(
+                                    "Lock named '%s' does not exist",
+                                    lockName.getDisplayName()
+                            )
+                    )
+                    .asException();
+        }
+    }
+
+    protected void ensureLockDoesNotExist(LockName lockName) throws StatusException {
+        if (locks.containsKey(lockName)) {
+            throw Status.ALREADY_EXISTS
+                    .withDescription(
+                            String.format(
+                                    "Lock named '%s' already exists",
+                                    lockName.getDisplayName()
+                            )
+                    ).asException();
+        }
     }
 }

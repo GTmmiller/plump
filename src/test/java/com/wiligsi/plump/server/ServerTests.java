@@ -114,6 +114,43 @@ public class ServerTests {
                 .hasFieldOrPropertyWithValue("code", Status.ALREADY_EXISTS.getCode());
     }
 
+    @Test
+    public void itShouldNotDeleteANonExistentLock() {
+        final String nonExistentName = "fakeLock";
+        assertThatThrownBy(
+                () -> {
+                    DestroyLockReply destroyLockReply = plumpBlockingStub.destroyLock(
+                            DestroyLockRequest.newBuilder().setLockName(nonExistentName).build()
+                    );
+                }
+        ).hasMessageContaining("Lock named")
+        .hasMessageContaining(nonExistentName)
+        .hasMessageContaining("does not exist")
+        .hasFieldOrProperty("status")
+        .extracting("status")
+        .hasFieldOrPropertyWithValue("code", Status.NOT_FOUND.getCode());
+    }
+
+    @Test
+    public void itShouldBeAbleToDeleteALock() {
+        final String lockName = "lockName";
+        CreateLockReply lockCreate = plumpBlockingStub.createLock(
+          CreateLockRequest.newBuilder()
+            .setLockName(lockName)
+            .build()
+        );
+
+        assertThatCode(
+                () -> {
+                    DestroyLockReply lockDestroy = plumpBlockingStub.destroyLock(
+                            DestroyLockRequest.newBuilder()
+                                .setLockName(lockName)
+                                .build()
+                    );
+                }
+        ).doesNotThrowAnyException();
+    }
+
 
 
 }
