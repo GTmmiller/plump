@@ -27,8 +27,8 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         try {
             createName = validateLockName(request.getLockName());
             ensureLockDoesNotExist(createName);
-        } catch (StatusException exception) {
-            responseObserver.onError(exception);
+        } catch (StatusException validationException) {
+            responseObserver.onError(validationException);
             return;
         }
 
@@ -37,8 +37,8 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         final Lock createLock;
         try {
            createLock = new Lock(createName.getDisplayName());
-        } catch (NoSuchAlgorithmException exception) {
-            responseObserver.onError(exception);
+        } catch (NoSuchAlgorithmException algorithmException) {
+            responseObserver.onError(algorithmException);
             return;
         }
 
@@ -50,15 +50,12 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     @Override
     public void destroyLock(PlumpOuterClass.DestroyLockRequest request, StreamObserver<PlumpOuterClass.DestroyLockReply> responseObserver) {
         // TODO: make a key on creation/deletion so that only someone with the key can delete the lock
-        // validate the lock name
-        // if the lock doesn't exist then throw an error
-        // if the lock does exist then delete it and return successfully
         final LockName destroyLockName;
         try {
             destroyLockName = validateLockName(request.getLockName());
             ensureLockAlreadyExists(destroyLockName);
-        } catch (StatusException exception) {
-            responseObserver.onError(exception);
+        } catch (StatusException validationException) {
+            responseObserver.onError(validationException);
             return;
         }
 
