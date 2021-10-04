@@ -15,6 +15,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
 import static com.wiligsi.plump.PlumpOuterClass.*;
@@ -60,6 +61,7 @@ public class ServerTests {
 
     @Test
     public void itShouldBePossibleToCreateALock() {
+        // Todo: It might be nice to just have a default create test lock method along with a create lock method that does the boilerplate
         assertThatCode(
                 () -> {
                     CreateLockReply reply = plumpBlockingStub.createLock(
@@ -149,6 +151,53 @@ public class ServerTests {
                     );
                 }
         ).doesNotThrowAnyException();
+    }
+
+    @Test
+    public void itShouldNotBeAbleToGetSequencerFromNonExistentLock() {
+        final String fakeLockName = "fakeLock";
+        // TODO: Can you make malformed requests?
+        assertThatThrownBy(
+                () -> {
+                    // Todo: is there anything we can do to verify the replies? I don't like the warnings all over
+                    SequencerReply sequencerReply = plumpBlockingStub.getSequencer(
+                            SequencerRequest.newBuilder()
+                                    .setLockName(fakeLockName)
+                                    .build()
+                    );
+                }
+                // TODO: Common pattern lock name does not exist should be removed to matcher
+        ).hasMessageContaining("Lock named")
+        .hasMessageContaining(fakeLockName)
+        .hasMessageContaining("does not exist")
+        .hasFieldOrProperty("status")
+        .extracting("status")
+        .hasFieldOrPropertyWithValue("code", Status.NOT_FOUND.getCode());
+    }
+
+    @Test
+    public void itShouldBeAbleToGetSequencerFromLock() {
+        final String lockName = "testLock";
+        final Instant effectiveTime = Instant.now();
+        CreateLockReply reply = plumpBlockingStub.createLock(
+                CreateLockRequest
+                        .newBuilder()
+                        .setLockName(lockName)
+                        .build()
+        );
+
+        SequencerReply sequencerReply = plumpBlockingStub.getSequencer(
+                SequencerRequest.newBuilder()
+                        .setLockName(lockName)
+                        .build()
+        );
+
+        assertThat(sequencerReply.getSequencer()).isNotNull()
+                .hasNoNullFieldsOrProperties()
+                .hasFieldOrPropertyWithValue("lockName", lockName)
+                .hasFieldOrPropertyWithValue("sequenceNumber", 0);
+
+        assertThat(sequencerReply.getSequencer().getExpiration()).isGreaterThan(effectiveTime.toEpochMilli());
     }
 
 
