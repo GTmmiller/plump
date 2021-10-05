@@ -65,13 +65,40 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
 
     @Override
-    public void getSequencer(PlumpOuterClass.SequencerRequest request, StreamObserver<PlumpOuterClass.SequencerReply> responseObserver) {
-        super.getSequencer(request, responseObserver);
+    public void acquireSequencer(PlumpOuterClass.SequencerRequest request, StreamObserver<PlumpOuterClass.SequencerReply> responseObserver) {
+        final LockName requestLockName;
+        try {
+            requestLockName = new LockName(request.getLockName());
+            ensureLockAlreadyExists(requestLockName);
+        } catch (StatusException validationException) {
+            responseObserver.onError(validationException);
+            return;
+        }
+
+        final PlumpOuterClass.Sequencer responseSequencer;
+        try {
+            responseSequencer = locks.get(requestLockName).createSequencer();
+        } catch (NoSuchAlgorithmException algorithmException) {
+            responseObserver.onError(
+                    Status.INTERNAL
+                            .withDescription(algorithmException.getMessage())
+                            .withCause(algorithmException.getCause())
+                            .asException()
+            );
+            return;
+        }
+
+        responseObserver.onNext(
+                PlumpOuterClass.SequencerReply.newBuilder()
+                        .setSequencer(responseSequencer)
+                        .build()
+        );
+        responseObserver.onCompleted();
     }
 
     @Override
-    public void getLock(PlumpOuterClass.LockRequest request, StreamObserver<PlumpOuterClass.LockReply> responseObserver) {
-        super.getLock(request, responseObserver);
+    public void acquireLock(PlumpOuterClass.LockRequest request, StreamObserver<PlumpOuterClass.LockReply> responseObserver) {
+        super.acquireLock(request, responseObserver);
     }
 
     @Override

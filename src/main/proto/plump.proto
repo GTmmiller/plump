@@ -7,12 +7,12 @@ service Plump {
     // Application-level functions
     rpc CreateLock (CreateLockRequest) returns (CreateLockReply) {}
     rpc DestroyLock (DestroyLockRequest) returns (DestroyLockReply) {}
-    rpc GetSequencer (SequencerRequest) returns (SequencerReply) {}
-    rpc GetLock (LockRequest) returns (LockReply) {}
+    rpc AcquireSequencer (SequencerRequest) returns (SequencerReply) {}
+    rpc AcquireLock (LockRequest) returns (LockReply) {}
     rpc LockKeepAlive (KeepAliveRequest) returns (KeepAliveReply) {}
     rpc ReleaseLock (ReleaseRequest) returns(ReleaseReply) {}
 
-    // Instrospection functions
+    // Introspection functions
     rpc WhoHasLock (WhoHasRequest) returns (WhoHasReply) {}
     rpc NextSequencer (NextSequencerRequest) returns (NextSequencerReply) {}
     rpc ListLocks (ListRequest) returns (ListReply) {}

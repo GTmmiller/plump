@@ -160,7 +160,7 @@ public class ServerTests {
         assertThatThrownBy(
                 () -> {
                     // Todo: is there anything we can do to verify the replies? I don't like the warnings all over
-                    SequencerReply sequencerReply = plumpBlockingStub.getSequencer(
+                    SequencerReply sequencerReply = plumpBlockingStub.acquireSequencer(
                             SequencerRequest.newBuilder()
                                     .setLockName(fakeLockName)
                                     .build()
@@ -186,7 +186,7 @@ public class ServerTests {
                         .build()
         );
 
-        SequencerReply sequencerReply = plumpBlockingStub.getSequencer(
+        SequencerReply sequencerReply = plumpBlockingStub.acquireSequencer(
                 SequencerRequest.newBuilder()
                         .setLockName(lockName)
                         .build()
