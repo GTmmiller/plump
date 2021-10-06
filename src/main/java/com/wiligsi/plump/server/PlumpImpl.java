@@ -102,8 +102,8 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
 
     @Override
-    public void lockKeepAlive(PlumpOuterClass.KeepAliveRequest request, StreamObserver<PlumpOuterClass.KeepAliveReply> responseObserver) {
-        super.lockKeepAlive(request, responseObserver);
+    public void keepAlive(PlumpOuterClass.KeepAliveRequest request, StreamObserver<PlumpOuterClass.KeepAliveReply> responseObserver) {
+        super.keepAlive(request, responseObserver);
     }
 
     @Override

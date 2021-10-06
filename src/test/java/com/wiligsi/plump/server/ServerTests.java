@@ -22,6 +22,8 @@ import static com.wiligsi.plump.PlumpOuterClass.*;
 import static org.assertj.core.api.Assertions.*;
 
 public class ServerTests {
+    private static final String TEST_LOCK_NAME = "testLock";
+
     private Server plumpServer;
     private ManagedChannel plumpChannel;
     private PlumpGrpc.PlumpBlockingStub plumpBlockingStub;
@@ -61,14 +63,10 @@ public class ServerTests {
 
     @Test
     public void itShouldBePossibleToCreateALock() {
-        // Todo: It might be nice to just have a default create test lock method along with a create lock method that does the boilerplate
         assertThatCode(
                 () -> {
-                    CreateLockReply reply = plumpBlockingStub.createLock(
-                            CreateLockRequest.newBuilder()
-                                    .setLockName("TestLock")
-                                    .build()
-                    );
+                    CreateLockReply reply = createTestLock();
+                    assertThat(reply.isInitialized()).isTrue();
                 }
         ).doesNotThrowAnyException();
     }
@@ -78,10 +76,8 @@ public class ServerTests {
     public void itShouldRejectMalformedLockNames(String lockName) {
         assertThatThrownBy(
                 () -> {
-                    CreateLockReply reply = plumpBlockingStub.createLock(
-                            CreateLockRequest.newBuilder()
-                                    .setLockName(lockName)
-                                    .build());
+                    CreateLockReply reply = createLock(lockName);
+                    assertThat(reply.isInitialized()).isFalse();
                 }
                 ).isInstanceOf(StatusRuntimeException.class)
                 .hasMessageContaining("Names should be a series of 4-12 alphanumeric characters")
@@ -200,6 +196,16 @@ public class ServerTests {
         assertThat(sequencerReply.getSequencer().getExpiration()).isGreaterThan(effectiveTime.toEpochMilli());
     }
 
+    private CreateLockReply createLock(String lockName) {
+        return plumpBlockingStub.createLock(
+                CreateLockRequest
+                        .newBuilder()
+                        .setLockName(lockName)
+                        .build()
+        );
+    }
 
-
+    private CreateLockReply createTestLock() {
+        return createLock(TEST_LOCK_NAME);
+    }
 }

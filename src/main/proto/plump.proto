@@ -9,7 +9,7 @@ service Plump {
     rpc DestroyLock (DestroyLockRequest) returns (DestroyLockReply) {}
     rpc AcquireSequencer (SequencerRequest) returns (SequencerReply) {}
     rpc AcquireLock (LockRequest) returns (LockReply) {}
-    rpc LockKeepAlive (KeepAliveRequest) returns (KeepAliveReply) {}
+    rpc KeepAlive (KeepAliveRequest) returns (KeepAliveReply) {}
     rpc ReleaseLock (ReleaseRequest) returns(ReleaseReply) {}
 
     // Introspection functions
