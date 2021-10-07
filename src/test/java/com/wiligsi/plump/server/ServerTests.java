@@ -2,6 +2,7 @@ package com.wiligsi.plump.server;
 
 
 import com.wiligsi.plump.PlumpGrpc;
+import com.wiligsi.plump.server.matcher.PlumpAssertions;
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.Status;
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.wiligsi.plump.PlumpOuterClass.*;
 import static org.assertj.core.api.Assertions.*;
+import static com.wiligsi.plump.server.matcher.PlumpAssertions.*;
 
 public class ServerTests {
     private static final String TEST_LOCK_NAME = "testLock";
@@ -74,17 +76,15 @@ public class ServerTests {
     @ParameterizedTest
     @ValueSource(strings = {"DamnLongLockName23232323232323", "sho", "$ymb)l*"})
     public void itShouldRejectMalformedLockNames(String lockName) {
-        assertThatThrownBy(
+        StatusRuntimeException throwable = catchThrowableOfType(
                 () -> {
                     CreateLockReply reply = createLock(lockName);
                     assertThat(reply.isInitialized()).isFalse();
-                }
-                ).isInstanceOf(StatusRuntimeException.class)
-                .hasMessageContaining("Names should be a series of 4-12 alphanumeric characters")
-                .hasFieldOrProperty("status")
-                .extracting("status")
-                .hasFieldOrPropertyWithValue("code", Status.INVALID_ARGUMENT.getCode());
+                },
+                StatusRuntimeException.class
+        );
 
+        assertThat(throwable).isInvalidLockNameException();
     }
 
     // Reject a duplicate lock

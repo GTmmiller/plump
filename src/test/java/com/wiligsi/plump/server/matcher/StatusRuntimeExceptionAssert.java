@@ -9,12 +9,6 @@ public class StatusRuntimeExceptionAssert extends AbstractThrowableAssert<Status
         super(actual, StatusRuntimeExceptionAssert.class);
     }
 
-    // TODO: Read the assertj source to see if they extend this anywhere
-    // public static StatusRuntimeExceptionAssert assertThatThrownBy
-
-    public static StatusRuntimeExceptionAssert assertThat(StatusRuntimeException actual) {
-        return new StatusRuntimeExceptionAssert(actual);
-    }
 
     public StatusRuntimeExceptionAssert isInvalidLockNameException() {
         isInstanceOf(StatusRuntimeException.class);
