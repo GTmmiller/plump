@@ -2,10 +2,8 @@ package com.wiligsi.plump.server;
 
 
 import com.wiligsi.plump.PlumpGrpc;
-import com.wiligsi.plump.server.matcher.PlumpAssertions;
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
-import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
@@ -66,10 +64,7 @@ public class ServerTests {
     @Test
     public void itShouldBePossibleToCreateALock() {
         assertThatCode(
-                () -> {
-                    CreateLockReply reply = createTestLock();
-                    assertThat(reply.isInitialized()).isTrue();
-                }
+                this::createTestLock
         ).doesNotThrowAnyException();
     }
 
@@ -77,75 +72,44 @@ public class ServerTests {
     @ValueSource(strings = {"DamnLongLockName23232323232323", "sho", "$ymb)l*"})
     public void itShouldRejectMalformedLockNames(String lockName) {
         StatusRuntimeException throwable = catchThrowableOfType(
-                () -> {
-                    CreateLockReply reply = createLock(lockName);
-                    assertThat(reply.isInitialized()).isFalse();
-                },
+                () -> createLock(lockName),
                 StatusRuntimeException.class
         );
-
+        // Todo: Should I test the part of the message that has the lock name?
         assertThat(throwable).isInvalidLockNameException();
     }
 
-    // Reject a duplicate lock
     @ParameterizedTest
-    @ValueSource(strings = {"lockName", "LoCKNAme", "lockname"})
+    @ValueSource(strings = {"testLock", "TeSTLOck", "testlock"})
     public void itShouldRejectDuplicateLockNames(String duplicateName) {
-        CreateLockReply reply = plumpBlockingStub.createLock(
-                CreateLockRequest.newBuilder()
-                        .setLockName("lockName")
-                        .build());
+        createTestLock();
 
-        assertThatThrownBy(
-                () -> {
-                    CreateLockReply duplicateReply = plumpBlockingStub.createLock(
-                            CreateLockRequest.newBuilder()
-                                    .setLockName(duplicateName)
-                                    .build());
-                }
-        ).isInstanceOf(StatusRuntimeException.class)
-                .hasMessageContaining("Lock named")
-                .hasMessageContaining(duplicateName)
-                .hasMessageContaining("already exists")
-                .hasFieldOrProperty("status")
-                .extracting("status")
-                .hasFieldOrPropertyWithValue("code", Status.ALREADY_EXISTS.getCode());
+        StatusRuntimeException throwable = catchThrowableOfType(
+                () -> createLock(duplicateName),
+                StatusRuntimeException.class
+        );
+
+        assertThat(throwable).isLockNameAlreadyExistsException(duplicateName);
     }
 
     @Test
     public void itShouldNotDeleteANonExistentLock() {
         final String nonExistentName = "fakeLock";
-        assertThatThrownBy(
-                () -> {
-                    DestroyLockReply destroyLockReply = plumpBlockingStub.destroyLock(
-                            DestroyLockRequest.newBuilder().setLockName(nonExistentName).build()
-                    );
-                }
-        ).hasMessageContaining("Lock named")
-        .hasMessageContaining(nonExistentName)
-        .hasMessageContaining("does not exist")
-        .hasFieldOrProperty("status")
-        .extracting("status")
-        .hasFieldOrPropertyWithValue("code", Status.NOT_FOUND.getCode());
+
+        StatusRuntimeException throwable = catchThrowableOfType(
+                () -> destroyLock(nonExistentName),
+                StatusRuntimeException.class
+        );
+
+        assertThat(throwable).isLockNameNotFoundException(nonExistentName);
     }
 
     @Test
     public void itShouldBeAbleToDeleteALock() {
-        final String lockName = "lockName";
-        CreateLockReply lockCreate = plumpBlockingStub.createLock(
-          CreateLockRequest.newBuilder()
-            .setLockName(lockName)
-            .build()
-        );
+        createTestLock();
 
         assertThatCode(
-                () -> {
-                    DestroyLockReply lockDestroy = plumpBlockingStub.destroyLock(
-                            DestroyLockRequest.newBuilder()
-                                .setLockName(lockName)
-                                .build()
-                    );
-                }
+                this::destroyTestLock
         ).doesNotThrowAnyException();
     }
 
@@ -153,59 +117,71 @@ public class ServerTests {
     public void itShouldNotBeAbleToGetSequencerFromNonExistentLock() {
         final String fakeLockName = "fakeLock";
         // TODO: Can you make malformed requests?
-        assertThatThrownBy(
+        StatusRuntimeException throwable = catchThrowableOfType(
                 () -> {
-                    // Todo: is there anything we can do to verify the replies? I don't like the warnings all over
-                    SequencerReply sequencerReply = plumpBlockingStub.acquireSequencer(
-                            SequencerRequest.newBuilder()
-                                    .setLockName(fakeLockName)
-                                    .build()
-                    );
-                }
-                // TODO: Common pattern lock name does not exist should be removed to matcher
-        ).hasMessageContaining("Lock named")
-        .hasMessageContaining(fakeLockName)
-        .hasMessageContaining("does not exist")
-        .hasFieldOrProperty("status")
-        .extracting("status")
-        .hasFieldOrPropertyWithValue("code", Status.NOT_FOUND.getCode());
+                    Sequencer fakeSequencer = getSequencer(fakeLockName);
+                    assertThat(fakeSequencer)
+                            .hasNoNullFieldsOrProperties()
+                            .hasFieldOrPropertyWithValue("lockName", fakeLockName);
+                },
+                StatusRuntimeException.class
+        );
+
+        assertThat(throwable).isLockNameNotFoundException(fakeLockName);
     }
 
     @Test
     public void itShouldBeAbleToGetSequencerFromLock() {
-        final String lockName = "testLock";
         final Instant effectiveTime = Instant.now();
-        CreateLockReply reply = plumpBlockingStub.createLock(
+        createTestLock();
+
+        final Sequencer testSequencer = getTestLockSequencer();
+
+        assertThat(testSequencer)
+                .hasNoNullFieldsOrProperties()
+                .hasFieldOrPropertyWithValue("lockName", TEST_LOCK_NAME)
+                .hasFieldOrPropertyWithValue("sequenceNumber", 0);
+
+        assertThat(testSequencer.getExpiration()).isGreaterThan(effectiveTime.toEpochMilli());
+    }
+
+    private void createLock(String lockName) {
+        CreateLockReply createLockReply = plumpBlockingStub.createLock(
                 CreateLockRequest
                         .newBuilder()
                         .setLockName(lockName)
                         .build()
         );
+        assertThat(createLockReply.isInitialized()).isTrue();
+    }
 
+    private void createTestLock() {
+        createLock(TEST_LOCK_NAME);
+    }
+
+    private void destroyLock(String lockName) {
+        DestroyLockReply destroyLockReply = plumpBlockingStub.destroyLock(
+                DestroyLockRequest.newBuilder()
+                        .setLockName(lockName)
+                        .build()
+        );
+        assertThat(destroyLockReply.isInitialized()).isTrue();
+    }
+
+    private void destroyTestLock() {
+        destroyLock(TEST_LOCK_NAME);
+    }
+
+    private Sequencer getSequencer(String lockName) {
         SequencerReply sequencerReply = plumpBlockingStub.acquireSequencer(
                 SequencerRequest.newBuilder()
                         .setLockName(lockName)
                         .build()
         );
-
-        assertThat(sequencerReply.getSequencer()).isNotNull()
-                .hasNoNullFieldsOrProperties()
-                .hasFieldOrPropertyWithValue("lockName", lockName)
-                .hasFieldOrPropertyWithValue("sequenceNumber", 0);
-
-        assertThat(sequencerReply.getSequencer().getExpiration()).isGreaterThan(effectiveTime.toEpochMilli());
+        return sequencerReply.getSequencer();
     }
 
-    private CreateLockReply createLock(String lockName) {
-        return plumpBlockingStub.createLock(
-                CreateLockRequest
-                        .newBuilder()
-                        .setLockName(lockName)
-                        .build()
-        );
-    }
-
-    private CreateLockReply createTestLock() {
-        return createLock(TEST_LOCK_NAME);
+    private Sequencer getTestLockSequencer() {
+        return getSequencer(TEST_LOCK_NAME);
     }
 }
