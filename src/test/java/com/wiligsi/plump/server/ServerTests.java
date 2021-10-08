@@ -145,6 +145,24 @@ public class ServerTests {
         assertThat(testSequencer.getExpiration()).isGreaterThan(effectiveTime.toEpochMilli());
     }
 
+    // should not be able to lock non-existent lock
+
+    // should lock when sequencer is on top
+
+    // should not lock when sequencer is not head
+
+    // sequencer from another lock shouldn't work
+
+    // locking should keepalive on success
+
+    // locking should keepalive on failure
+
+    // old sequencer should not work to lock -- requires standalone keepalive endpoint
+
+    // TODO: is it worth it to test the trickier clock-based lock scenarios here? I have a test in locks and I feel it wouldn't be worth it
+
+    // Helper Methods
+
     private void createLock(String lockName) {
         CreateLockReply createLockReply = plumpBlockingStub.createLock(
                 CreateLockRequest

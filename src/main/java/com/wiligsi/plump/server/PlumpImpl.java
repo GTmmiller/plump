@@ -98,6 +98,14 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
     @Override
     public void acquireLock(PlumpOuterClass.LockRequest request, StreamObserver<PlumpOuterClass.LockReply> responseObserver) {
+        // Essentially responds with a true or false
+        // verify lock exists/no malformed lock or anything like that
+        // get lock from the locks map
+        // interesting... Looking back on my thoughts this should be a keep alive and acquire
+        // Keep alive first and then try to get the lock
+        // Be sure to catch and handle invalid sequencer exceptions
+        // Send back the results and updated sequencer
+
         super.acquireLock(request, responseObserver);
     }
 
