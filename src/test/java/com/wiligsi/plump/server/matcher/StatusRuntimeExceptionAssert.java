@@ -22,7 +22,7 @@ public class StatusRuntimeExceptionAssert extends AbstractThrowableAssert<Status
         return this;
     }
 
-    public StatusRuntimeExceptionAssert isLockNameAlreadyExistsException(String lockName) {
+    public StatusRuntimeExceptionAssert isLockNameAlreadyExistsExceptionFor(String lockName) {
         isInstanceOf(StatusRuntimeException.class);
         hasMessageContaining("Lock named");
         hasMessageContaining(lockName);
@@ -36,7 +36,7 @@ public class StatusRuntimeExceptionAssert extends AbstractThrowableAssert<Status
         return this;
     }
 
-    public StatusRuntimeExceptionAssert isLockNameNotFoundException(String lockName) {
+    public StatusRuntimeExceptionAssert isLockNameNotFoundExceptionFor(String lockName) {
         isInstanceOf(StatusRuntimeException.class);
         hasMessageContaining("Lock named");
         hasMessageContaining(lockName);
@@ -46,6 +46,20 @@ public class StatusRuntimeExceptionAssert extends AbstractThrowableAssert<Status
                 .hasFieldOrPropertyWithValue(
                         "code",
                         Status.NOT_FOUND.getCode()
+                );
+        return this;
+    }
+
+    public StatusRuntimeExceptionAssert isInvalidSequencerExceptionFor(String lockName) {
+        isInstanceOf(StatusRuntimeException.class);
+        hasMessageContaining("Provided sequencer for lock named");
+        hasMessageContaining(lockName);
+        hasMessageContaining("is invalid");
+        hasFieldOrProperty("status");
+        extracting("status")
+                .hasFieldOrPropertyWithValue(
+                        "code",
+                        Status.INVALID_ARGUMENT
                 );
         return this;
     }
