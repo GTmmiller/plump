@@ -40,7 +40,7 @@ public class Lock {
         LOG.info("Created new lock: " + this);
     }
 
-    public boolean lock(Sequencer request) throws NoSuchAlgorithmException, InvalidSequencerException {
+    public boolean acquire(Sequencer request) throws NoSuchAlgorithmException, InvalidSequencerException {
         validateSequencer(request);
         pruneSequencers();
         final Optional<Sequencer> head = getHead();
@@ -54,7 +54,7 @@ public class Lock {
         return false;
     }
 
-    public boolean unlock(Sequencer request) throws NoSuchAlgorithmException, InvalidSequencerException {
+    public boolean release(Sequencer request) throws NoSuchAlgorithmException, InvalidSequencerException {
         validateSequencer(request);
         pruneSequencers();
         final Optional<Sequencer> head = getHead();
@@ -141,6 +141,8 @@ public class Lock {
         if (!sequencers.containsKey(sequencer.getSequenceNumber())) {
             throw new InvalidSequencerException(sequencer);
         }
+
+        // Todo: change lock/unlock to acquire/release for consistency
 
         final Sequencer localSequencer = sequencers.get(sequencer.getSequenceNumber());
 

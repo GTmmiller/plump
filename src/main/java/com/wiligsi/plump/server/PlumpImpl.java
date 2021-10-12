@@ -116,7 +116,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
         final Lock acquireLock = locks.get(requestLockName);
         try {
-            acquireLock.lock(request.getSequencer());
+            acquireLock.acquire(request.getSequencer());
         } catch (InvalidSequencerException exception) {
             responseObserver.onError(
                     Status.INVALID_ARGUMENT
