@@ -40,25 +40,30 @@ public class Lock {
         LOG.info("Created new lock: " + this);
     }
 
-    public boolean lock(Sequencer request) throws NoSuchAlgorithmException {
+    public boolean lock(Sequencer request) throws NoSuchAlgorithmException, InvalidSequencerException {
+        validateSequencer(request);
         pruneSequencers();
         final Optional<Sequencer> head = getHead();
         if (state == LockState.UNLOCKED &&
                 head.isPresent() &&
-                SequencerUtil.verifySequencer(request, head.get())) {
+                SequencerUtil.checkSequencer(request, head.get())) {
+            SequencerUtil.verifySequencer(request, head.get());
             state = LockState.LOCKED;
             return true;
         }
         return false;
     }
 
-    public boolean unlock(Sequencer request) throws NoSuchAlgorithmException {
+    public boolean unlock(Sequencer request) throws NoSuchAlgorithmException, InvalidSequencerException {
+        validateSequencer(request);
         pruneSequencers();
         final Optional<Sequencer> head = getHead();
 
         if (state == LockState.LOCKED &&
                 head.isPresent() &&
-                SequencerUtil.verifySequencer(request, head.get())) {
+                SequencerUtil.checkSequencer(request, head.get())) {
+            SequencerUtil.verifySequencer(request, head.get());
+
             sequencers.remove(head.get().getSequenceNumber());
             sequenceNumbers.remove();
 
@@ -97,29 +102,25 @@ public class Lock {
                 .build();
     }
 
-    public Optional<Sequencer> keepAlive(Sequencer sequencer) throws NoSuchAlgorithmException {
+    public Sequencer keepAlive(Sequencer sequencer) throws NoSuchAlgorithmException, InvalidSequencerException {
         Instant effectiveTime = Instant.now(clock);
 
-        // retrieve sequencer from map
-        if (sequencers.containsKey(sequencer.getSequenceNumber())) {
-            final Sequencer localSequencer = sequencers.get(sequencer.getSequenceNumber());
-            if (SequencerUtil.verifySequencer(sequencer, localSequencer)) {
-                // Update the sequencer and return the new one
-                final String newSequencerKey = generateRandomKey();
-                final String newSequencerKeyHash = SequencerUtil.hashKey(newSequencerKey);
-                final Sequencer newLocalSequencer = Sequencer.newBuilder(localSequencer)
-                        .setExpiration(effectiveTime.plus(Duration.ofMinutes(2)).toEpochMilli())
-                        .setKey(newSequencerKeyHash)
-                        .build();
-                sequencers.put(newLocalSequencer.getSequenceNumber(), newLocalSequencer);
-                return Optional.of(
-                        Sequencer.newBuilder(newLocalSequencer)
+        validateSequencer(sequencer);
+
+        final Sequencer localSequencer = sequencers.get(sequencer.getSequenceNumber());
+        SequencerUtil.verifySequencer(sequencer, localSequencer);
+
+        // Update the sequencer and return the new one
+        final String newSequencerKey = generateRandomKey();
+        final String newSequencerKeyHash = SequencerUtil.hashKey(newSequencerKey);
+        final Sequencer newLocalSequencer = Sequencer.newBuilder(localSequencer)
+                .setExpiration(effectiveTime.plus(Duration.ofMinutes(2)).toEpochMilli())
+                .setKey(newSequencerKeyHash)
+                .build();
+        sequencers.put(newLocalSequencer.getSequenceNumber(), newLocalSequencer);
+        return Sequencer.newBuilder(newLocalSequencer)
                         .setKey(newSequencerKey)
-                        .build()
-                );
-            }
-        }
-        return Optional.empty();
+                        .build();
     }
 
     public LockName getName() {
@@ -134,6 +135,18 @@ public class Lock {
 
     public LockState getState() {
         return state;
+    }
+
+    protected void validateSequencer(Sequencer sequencer) throws InvalidSequencerException {
+        if (!sequencers.containsKey(sequencer.getSequenceNumber())) {
+            throw new InvalidSequencerException(sequencer);
+        }
+
+        final Sequencer localSequencer = sequencers.get(sequencer.getSequenceNumber());
+
+        if (!SequencerUtil.checkSequencer(sequencer, localSequencer)) {
+            throw new InvalidSequencerException(sequencer);
+        }
     }
 
     protected void pruneSequencers() {

@@ -47,25 +47,29 @@ public class LockTests {
     }
 
     @Test
-    public void itShouldNotLockWhenNew() throws NoSuchAlgorithmException {
+    public void itShouldNotLockWhenNew() {
         final Sequencer dud = dudSequencerSupplier.get();
 
-        assertThat(testLock.lock(dud)).isFalse();
+        assertThatThrownBy(
+                () -> testLock.lock(dud)
+        ).isInstanceOf(InvalidSequencerException.class);
         assertUnlocked(testLock);
         assertThat(testLock.getHeadSequencerNumber()).isEmpty();
     }
 
     @Test
-    public void itShouldNotUnlockWhenNew() throws NoSuchAlgorithmException {
+    public void itShouldNotUnlockWhenNew() {
         final Sequencer dud = dudSequencerSupplier.get();
 
-        assertThat(testLock.unlock(dud)).isFalse();
+        assertThatThrownBy(
+                () -> testLock.unlock(dud)
+        ).isInstanceOf(InvalidSequencerException.class);
         assertUnlocked(testLock);
         assertThat(testLock.getHeadSequencerNumber()).isEmpty();
     }
 
     @Test
-    public void itShouldLockWhenReady() throws NoSuchAlgorithmException {
+    public void itShouldLockWhenReady() throws NoSuchAlgorithmException, InvalidSequencerException {
         final Sequencer sequencer = testLock.createSequencer();
 
         assertThat(testLock.lock(sequencer)).isTrue();
@@ -74,7 +78,7 @@ public class LockTests {
     }
 
     @Test
-    public void itShouldUnlockWhenReady() throws NoSuchAlgorithmException {
+    public void itShouldUnlockWhenReady() throws NoSuchAlgorithmException, InvalidSequencerException {
         final Sequencer sequencer = testLock.createSequencer();
 
         testLock.lock(sequencer);
@@ -84,18 +88,20 @@ public class LockTests {
     }
 
     @Test
-    public void itShouldNotLetASequencerBeUsedTwice() throws NoSuchAlgorithmException {
+    public void itShouldNotLetASequencerBeUsedTwice() throws NoSuchAlgorithmException, InvalidSequencerException {
         final Sequencer sequencer = testLock.createSequencer();
 
         testLock.lock(sequencer);
         testLock.unlock(sequencer);
-        assertThat(testLock.lock(sequencer)).isFalse();
+        assertThatThrownBy(
+                () -> testLock.lock(sequencer)
+        ).isInstanceOf(InvalidSequencerException.class);
         assertUnlocked(testLock);
         assertThat(testLock.getHeadSequencerNumber()).isEmpty();
     }
 
     @Test
-    public void itShouldOnlyLockWithHeadSequencer() throws NoSuchAlgorithmException {
+    public void itShouldOnlyLockWithHeadSequencer() throws NoSuchAlgorithmException, InvalidSequencerException {
         final Sequencer sequencer =  testLock.createSequencer();
         final Sequencer secondarySequencer = testLock.createSequencer();
 
@@ -105,7 +111,7 @@ public class LockTests {
     }
 
     @Test
-    public void itShouldOnlyUnlockWithHeadSequencer() throws NoSuchAlgorithmException {
+    public void itShouldOnlyUnlockWithHeadSequencer() throws NoSuchAlgorithmException, InvalidSequencerException {
         final Sequencer sequencer = testLock.createSequencer();
         final Sequencer secondarySequencer = testLock.createSequencer();
 
@@ -116,7 +122,7 @@ public class LockTests {
     }
 
     @Test
-    public void itShouldImplicitlyRemoveOverdueSequencer() throws NoSuchAlgorithmException {
+    public void itShouldImplicitlyRemoveOverdueSequencer() throws NoSuchAlgorithmException, InvalidSequencerException {
         final Sequencer overdueSequencer = testLock.createSequencer();
         final Sequencer onTimeSequencer;
 
@@ -124,13 +130,14 @@ public class LockTests {
         onTimeSequencer = testLock.createSequencer();
         setTestClockAhead(Duration.ofMinutes(2));
 
+        // TODO: probably should catch invalid
         assertThat(testLock.unlock(overdueSequencer)).isFalse();
         assertUnlocked(testLock);
         assertThat(testLock.getHeadSequencerNumber()).contains(onTimeSequencer.getSequenceNumber());
     }
 
     @Test
-    public void itShouldUnlockWhenHeadSequencerIsOverdue() throws NoSuchAlgorithmException {
+    public void itShouldUnlockWhenHeadSequencerIsOverdue() throws NoSuchAlgorithmException, InvalidSequencerException {
         final Sequencer overdueSequencer = testLock.createSequencer();
         final Sequencer onTimeSequencer;
 
@@ -144,22 +151,21 @@ public class LockTests {
     }
 
     @Test
-    public void itShouldKeepSequencerAlive() throws NoSuchAlgorithmException {
+    public void itShouldKeepSequencerAlive() throws NoSuchAlgorithmException, InvalidSequencerException {
         final Sequencer sequencer = testLock.createSequencer();
         setTestClockAhead(Duration.ofMinutes(1));
-        final Optional<Sequencer> aliveSequencer = testLock.keepAlive(sequencer);
+        final Sequencer aliveSequencer = testLock.keepAlive(sequencer);
         setTestClockAhead(Duration.ofMinutes(2));
 
         assertThat(testLock.getHeadSequencerNumber()).contains(sequencer.getSequenceNumber());
-        assertThat(aliveSequencer).isPresent();
-        assertThat(sequencer.getLockName()).isEqualTo(aliveSequencer.get().getLockName());
-        assertThat(sequencer.getSequenceNumber()).isEqualTo(aliveSequencer.get().getSequenceNumber());
-        assertThat(sequencer.getExpiration()).isLessThan(aliveSequencer.get().getExpiration());
-        assertThat(sequencer.getKey()).isNotEqualTo(aliveSequencer.get().getKey());
+        assertThat(sequencer.getLockName()).isEqualTo(aliveSequencer.getLockName());
+        assertThat(sequencer.getSequenceNumber()).isEqualTo(aliveSequencer.getSequenceNumber());
+        assertThat(sequencer.getExpiration()).isLessThan(aliveSequencer.getExpiration());
+        assertThat(sequencer.getKey()).isNotEqualTo(aliveSequencer.getKey());
     }
 
     @Test
-    public void itShouldKeepSequencerAliveInPlace() throws NoSuchAlgorithmException {
+    public void itShouldKeepSequencerAliveInPlace() throws NoSuchAlgorithmException, InvalidSequencerException {
         final Sequencer headSequencer = testLock.createSequencer();
         final Sequencer keepAliveSequencer = testLock.createSequencer();
         setTestClockAhead(Duration.ofMinutes(1));
@@ -168,12 +174,13 @@ public class LockTests {
     }
 
     @Test
-    public void itShouldReturnEmptyForDudKeepAlive() throws NoSuchAlgorithmException {
+    public void itShouldThrowExceptionForDudKeepAlive() {
         final Sequencer dudSequencer = dudSequencerSupplier.get();
         setTestClockAhead(Duration.ofMinutes(1));
-        final Optional<Sequencer> renewedDud = testLock.keepAlive(dudSequencer);
 
-        assertThat(renewedDud).isEmpty();
+        assertThatThrownBy(
+                () -> testLock.keepAlive(dudSequencer)
+        ).isInstanceOf(InvalidSequencerException.class);
     }
 
     // Can't lock with wrong lock Name

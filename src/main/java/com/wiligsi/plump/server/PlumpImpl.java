@@ -104,6 +104,36 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         // Keep alive first and then try to get the lock
         // Be sure to catch and handle invalid sequencer exceptions
         // Send back the results and updated sequencer
+        // verify lock exists
+        final LockName requestLockName;
+        try {
+            requestLockName = new LockName(request.getLockName());
+            ensureLockAlreadyExists(requestLockName);
+        } catch (StatusException validationException) {
+            responseObserver.onError(validationException);
+            return;
+        }
+
+        final Lock acquireLock = locks.get(requestLockName);
+        try {
+            acquireLock.lock(request.getSequencer());
+        } catch (InvalidSequencerException exception) {
+            responseObserver.onError(
+                    Status.INVALID_ARGUMENT
+                            .withDescription(exception.getMessage())
+                            .withCause(exception)
+                            .asException()
+            );
+        } catch (NoSuchAlgorithmException exception) {
+            responseObserver.onError(
+                    Status.INTERNAL
+                            .withDescription(exception.getMessage())
+                            .withCause(exception)
+                            .asException()
+            );
+        }
+
+
 
         super.acquireLock(request, responseObserver);
     }
