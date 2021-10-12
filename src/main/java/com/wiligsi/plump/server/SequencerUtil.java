@@ -37,7 +37,7 @@ public class SequencerUtil {
                 request.getExpiration() == local.getExpiration();
 
         if (!validSequencer) {
-            throw new InvalidSequencerException(request);
+            throw new InvalidSequencerException(local.getLockName());
         }
     }
 

@@ -139,7 +139,7 @@ public class Lock {
 
     protected void validateSequencer(Sequencer sequencer) throws InvalidSequencerException {
         if (!sequencers.containsKey(sequencer.getSequenceNumber())) {
-            throw new InvalidSequencerException(sequencer);
+            throw new InvalidSequencerException(name.getDisplayName());
         }
 
         // Todo: change lock/unlock to acquire/release for consistency
@@ -147,7 +147,7 @@ public class Lock {
         final Sequencer localSequencer = sequencers.get(sequencer.getSequenceNumber());
 
         if (!SequencerUtil.checkSequencer(sequencer, localSequencer)) {
-            throw new InvalidSequencerException(sequencer);
+            throw new InvalidSequencerException(name.getDisplayName());
         }
     }
 

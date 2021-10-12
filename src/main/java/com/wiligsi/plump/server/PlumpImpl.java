@@ -6,6 +6,7 @@ import io.grpc.Status;
 import io.grpc.StatusException;
 import io.grpc.stub.StreamObserver;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Logger;
@@ -97,14 +98,6 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
     @Override
     public void acquireLock(PlumpOuterClass.LockRequest request, StreamObserver<PlumpOuterClass.LockReply> responseObserver) {
-        // Essentially responds with a true or false
-        // verify lock exists/no malformed lock or anything like that
-        // get lock from the locks map
-        // interesting... Looking back on my thoughts this should be a keep alive and acquire
-        // Keep alive first and then try to get the lock
-        // Be sure to catch and handle invalid sequencer exceptions
-        // Send back the results and updated sequencer
-        // verify lock exists
         final LockName requestLockName;
         try {
             requestLockName = new LockName(request.getLockName());
@@ -115,8 +108,11 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         }
 
         final Lock acquireLock = locks.get(requestLockName);
+        final boolean success;
+        final PlumpOuterClass.Sequencer keepAliveSequencer;
         try {
-            acquireLock.acquire(request.getSequencer());
+            success = acquireLock.acquire(request.getSequencer());
+            keepAliveSequencer = acquireLock.keepAlive(request.getSequencer());
         } catch (InvalidSequencerException exception) {
             responseObserver.onError(
                     Status.INVALID_ARGUMENT
@@ -124,6 +120,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
                             .withCause(exception)
                             .asException()
             );
+            return;
         } catch (NoSuchAlgorithmException exception) {
             responseObserver.onError(
                     Status.INTERNAL
@@ -131,11 +128,17 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
                             .withCause(exception)
                             .asException()
             );
+            return;
         }
 
-
-
-        super.acquireLock(request, responseObserver);
+        responseObserver.onNext(
+                PlumpOuterClass.LockReply.newBuilder()
+                        .setUpdatedSequencer(keepAliveSequencer)
+                        .setSuccess(success)
+                        .setKeepAliveInterval(Duration.ofMinutes(2).toMillis())
+                        .build()
+        );
+        responseObserver.onCompleted();
     }
 
     @Override

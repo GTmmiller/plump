@@ -59,7 +59,7 @@ public class StatusRuntimeExceptionAssert extends AbstractThrowableAssert<Status
         extracting("status")
                 .hasFieldOrPropertyWithValue(
                         "code",
-                        Status.INVALID_ARGUMENT
+                        Status.INVALID_ARGUMENT.getCode()
                 );
         return this;
     }
