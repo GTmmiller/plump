@@ -98,9 +98,10 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
     @Override
     public void acquireLock(PlumpOuterClass.LockRequest request, StreamObserver<PlumpOuterClass.LockReply> responseObserver) {
+        final PlumpOuterClass.Sequencer requestSequencer = request.getSequencer();
         final LockName requestLockName;
         try {
-            requestLockName = new LockName(request.getLockName());
+            requestLockName = new LockName(requestSequencer.getLockName());
             ensureLockAlreadyExists(requestLockName);
         } catch (StatusException validationException) {
             responseObserver.onError(validationException);
@@ -111,8 +112,8 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         final boolean success;
         final PlumpOuterClass.Sequencer keepAliveSequencer;
         try {
-            success = acquireLock.acquire(request.getSequencer());
-            keepAliveSequencer = acquireLock.keepAlive(request.getSequencer());
+            success = acquireLock.acquire(requestSequencer);
+            keepAliveSequencer = acquireLock.keepAlive(requestSequencer);
         } catch (InvalidSequencerException exception) {
             responseObserver.onError(
                     Status.INVALID_ARGUMENT

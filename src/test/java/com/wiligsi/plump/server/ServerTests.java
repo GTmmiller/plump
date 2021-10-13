@@ -151,17 +151,15 @@ public class ServerTests {
         final String fakeLockName = "fakeLock";
 
         StatusRuntimeException throwable = catchThrowableOfType(
-                () -> {
-                    acquireLock(
-                            fakeLockName,
-                            Sequencer.newBuilder()
-                                    .setLockName("fakeLock")
-                                    .build()
-                    );
-                },
+                () -> acquireLock(
+                        Sequencer.newBuilder()
+                                .setLockName("fakeLock")
+                                .build()
+                ),
                 StatusRuntimeException.class
         );
         assertThat(throwable).isLockNameNotFoundExceptionFor(fakeLockName);
+        // TODO: provide protection against partial sequencers
     }
 
     // should lock when sequencer is on top
@@ -169,7 +167,7 @@ public class ServerTests {
     public void itShouldLockWhenSequencerIsOnTop() {
         createTestLock();
         Sequencer sequencer = acquireTestLockSequencer();
-        LockReply lockReply = acquireTestLock(sequencer);
+        LockReply lockReply = acquireLock(sequencer);
 
         assertThat(lockReply).hasNoNullFieldsOrProperties()
                 .hasFieldOrPropertyWithValue("success", true);
@@ -188,7 +186,7 @@ public class ServerTests {
         Sequencer firstSequencer = acquireTestLockSequencer();
         Sequencer secondSequencer = acquireTestLockSequencer();
 
-        LockReply failureReply = acquireTestLock(secondSequencer);
+        LockReply failureReply = acquireLock(secondSequencer);
 
         // TODO: make a matcher for sequencers
         assertThat(failureReply).hasNoNullFieldsOrProperties()
@@ -201,36 +199,14 @@ public class ServerTests {
         assertThat(failureReply.getUpdatedSequencer().getExpiration()).isGreaterThan(secondSequencer.getExpiration());
     }
 
-    // sequencer from another lock shouldn't work
-    @Test
-    public void itShouldNotAcceptSequencerFromAnotherLock() {
-        final String otherLockName = "otherLock";
-        createTestLock();
-        createLock(otherLockName);
-
-        Sequencer otherLockSequencer = acquireSequencer(otherLockName);
-
-        StatusRuntimeException throwable = catchThrowableOfType(
-                () -> {
-                    LockReply lockReply = acquireTestLock(otherLockSequencer);
-                },
-                StatusRuntimeException.class
-        );
-
-        assertThat(throwable).isInvalidSequencerExceptionFor(TEST_LOCK_NAME);
-    }
-
-    // old sequencer should not work to lock -- requires standalone keepalive endpoint
      @Test
      public void itShouldNotAllowOldSequencerWhenUpdated() {
         createTestLock();
         Sequencer sequencer = acquireTestLockSequencer();
-        acquireTestLock(sequencer);
+        acquireLock(sequencer);
 
         StatusRuntimeException throwable = catchThrowableOfType(
-                () -> {
-                    acquireTestLock(sequencer);
-                },
+                () -> acquireLock(sequencer),
                 StatusRuntimeException.class
         );
 
@@ -279,16 +255,19 @@ public class ServerTests {
         return acquireSequencer(TEST_LOCK_NAME);
     }
 
-    private LockReply acquireLock(String lockName, Sequencer sequencer) {
+    private LockReply acquireLock(Sequencer sequencer) {
         return plumpBlockingStub.acquireLock(
                 LockRequest.newBuilder()
-                        .setLockName(lockName)
                         .setSequencer(sequencer)
                         .build()
         );
     }
 
-    private LockReply acquireTestLock(Sequencer sequencer) {
-        return acquireLock(TEST_LOCK_NAME, sequencer);
-    }
+
+//    private Sequencer keepAliveSequencer(Sequencer sequencer) {
+//        return plumpBlockingStub.keepAlive(
+//                KeepAliveRequest.newBuilder()
+//                        .setSequencer(sequencer)
+//        )
+//    }
 }
