@@ -1,4 +1,4 @@
-package com.wiligsi.plump.server.matcher;
+package com.wiligsi.plump.server.assertion;
 
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;

@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.wiligsi.plump.PlumpOuterClass.*;
 import static org.assertj.core.api.Assertions.*;
-import static com.wiligsi.plump.server.matcher.PlumpAssertions.*;
+import static com.wiligsi.plump.server.assertion.PlumpAssertions.*;
 
 public class ServerTests {
     private static final String TEST_LOCK_NAME = "testLock";
@@ -188,15 +188,9 @@ public class ServerTests {
 
         LockReply failureReply = acquireLock(secondSequencer);
 
-        // TODO: make a matcher for sequencers
         assertThat(failureReply).hasNoNullFieldsOrProperties()
                 .hasFieldOrPropertyWithValue("success", false);
-        // TODO: assert that getUpdatedSequencer() isUpdatedFrom(sequencer)
-        assertThat(failureReply.getUpdatedSequencer())
-                .hasFieldOrPropertyWithValue("lockName", secondSequencer.getLockName())
-                .hasFieldOrPropertyWithValue("sequenceNumber", secondSequencer.getSequenceNumber());
-        assertThat(failureReply.getUpdatedSequencer().getKey()).isNotEqualTo(secondSequencer.getKey());
-        assertThat(failureReply.getUpdatedSequencer().getExpiration()).isGreaterThan(secondSequencer.getExpiration());
+        assertThat(failureReply.getUpdatedSequencer()).isUpdatedFrom(secondSequencer);
     }
 
      @Test
@@ -213,7 +207,36 @@ public class ServerTests {
         assertThat(throwable).isInvalidSequencerExceptionFor(TEST_LOCK_NAME);
      }
 
-    // Helper Methods
+     // It should keep alive a non-expired sequencer
+    @Test
+    public void itShouldKeepAliveSequencer() {
+        createTestLock();
+        Sequencer testLockSequencer = acquireTestLockSequencer();
+        Sequencer keepAliveSequencer = keepAliveSequencer(testLockSequencer);
+
+        assertThat(keepAliveSequencer).isUpdatedFrom(testLockSequencer);
+    }
+    // It Should not keep alive a non-expired sequencer
+    // It should not keep alive an invalid sequencer
+
+
+
+    @Test public void itShouldNotKeepAliveInvalidSequencer() {
+        createTestLock();
+        Sequencer testLockSequencer = acquireTestLockSequencer();
+        Sequencer badSequencer = Sequencer.newBuilder(testLockSequencer)
+                .setKey("badKey")
+                .build();
+
+        StatusRuntimeException throwable = catchThrowableOfType(
+                () -> keepAliveSequencer(badSequencer),
+                StatusRuntimeException.class
+        );
+
+        assertThat(throwable).isInvalidSequencerExceptionFor(TEST_LOCK_NAME);
+    }
+
+     // Helper Methods
 
     private void createLock(String lockName) {
         CreateLockReply createLockReply = plumpBlockingStub.createLock(
@@ -263,11 +286,13 @@ public class ServerTests {
         );
     }
 
-
-//    private Sequencer keepAliveSequencer(Sequencer sequencer) {
-//        return plumpBlockingStub.keepAlive(
-//                KeepAliveRequest.newBuilder()
-//                        .setSequencer(sequencer)
-//        )
-//    }
+    // TODO: Actually implement a keep alive interval. Would be a bigger thing with a config object probably.
+    // TODO: make some actual timeout ones? I guess it's fine since we did it for the lock itself
+    private Sequencer keepAliveSequencer(Sequencer sequencer) {
+        return plumpBlockingStub.keepAlive(
+                KeepAliveRequest.newBuilder()
+                        .setSequencer(sequencer)
+                        .build()
+        ).getUpdatedSequencer();
+    }
 }

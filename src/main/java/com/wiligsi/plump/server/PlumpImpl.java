@@ -107,6 +107,9 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
             responseObserver.onError(validationException);
             return;
         }
+        // TODO: Malformed lock name consideration
+        // TODO: Break common stuff out into more methods
+        // TODO: Use typed methods to send errors and stuff
 
         final Lock acquireLock = locks.get(requestLockName);
         final boolean success;
@@ -144,7 +147,40 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
     @Override
     public void keepAlive(PlumpOuterClass.KeepAliveRequest request, StreamObserver<PlumpOuterClass.KeepAliveReply> responseObserver) {
-        super.keepAlive(request, responseObserver);
+        final PlumpOuterClass.Sequencer requestSequencer = request.getSequencer();
+        final LockName requestLockName;
+        try {
+            requestLockName = validateLockName(requestSequencer.getLockName());
+            ensureLockAlreadyExists(requestLockName);
+            Lock keepAliveLock = locks.get(requestLockName);
+            PlumpOuterClass.Sequencer newSequencer =  keepAliveLock.keepAlive(requestSequencer);
+            responseObserver.onNext(
+                    PlumpOuterClass.KeepAliveReply.newBuilder()
+                            .setUpdatedSequencer(newSequencer)
+                            .setKeepAliveInterval(Duration.ofMinutes(2).toMillis())
+                            .build()
+            );
+            responseObserver.onCompleted();
+        } catch (StatusException validationException) {
+            responseObserver.onError(validationException);
+        } catch (InvalidSequencerException exception) {
+            responseObserver.onError(
+                    Status.INVALID_ARGUMENT
+                            .withDescription(exception.getMessage())
+                            .withCause(exception)
+                            .asException()
+            );
+        } catch (NoSuchAlgorithmException exception) {
+            responseObserver.onError(
+                    Status.INTERNAL
+                            .withDescription(exception.getMessage())
+                            .withCause(exception)
+                            .asException()
+            );
+        }
+
+        // TODO: or, combine all of the try/catch blocks and catch everything
+
     }
 
     @Override
