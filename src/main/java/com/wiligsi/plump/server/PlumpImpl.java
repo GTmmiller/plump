@@ -185,7 +185,37 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
     @Override
     public void releaseLock(PlumpOuterClass.ReleaseRequest request, StreamObserver<PlumpOuterClass.ReleaseReply> responseObserver) {
-        super.releaseLock(request, responseObserver);
+        try{
+            PlumpOuterClass.Sequencer releaseSequencer = request.getSequencer();
+            LockName lockName = validateLockName(releaseSequencer.getLockName());
+            Lock releaseLock = locks.get(lockName);
+            boolean success = releaseLock.release(releaseSequencer);
+            PlumpOuterClass.Sequencer updatedSequencer = releaseLock.keepAlive(releaseSequencer);
+            responseObserver.onNext(
+                    PlumpOuterClass.ReleaseReply.newBuilder()
+                            .setKeepAliveInterval(Duration.ofMinutes(2).toMillis())
+                            .setUpdatedSequencer(updatedSequencer)
+                            .setSuccess(success)
+                            .build()
+            );
+            responseObserver.onCompleted();
+        } catch (StatusException exception) {
+            responseObserver.onError(exception);
+        } catch (InvalidSequencerException exception) {
+            responseObserver.onError(
+                    Status.INVALID_ARGUMENT
+                            .withDescription(exception.getMessage())
+                            .withCause(exception)
+                            .asException()
+            );
+        } catch (NoSuchAlgorithmException exception) {
+            responseObserver.onError(
+                    Status.INTERNAL
+                            .withDescription(exception.getMessage())
+                            .withCause(exception)
+                            .asException()
+            );
+        }
     }
 
     @Override

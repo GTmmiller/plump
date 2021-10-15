@@ -218,9 +218,6 @@ public class ServerTests {
     }
     // It Should not keep alive a non-expired sequencer
     // It should not keep alive an invalid sequencer
-
-
-
     @Test public void itShouldNotKeepAliveInvalidSequencer() {
         createTestLock();
         Sequencer testLockSequencer = acquireTestLockSequencer();
@@ -235,6 +232,56 @@ public class ServerTests {
 
         assertThat(throwable).isInvalidSequencerExceptionFor(TEST_LOCK_NAME);
     }
+
+    // can lock and unlock a lock
+    @Test
+    public void itShouldBeAbleToReleaseALock() {
+        createTestLock();
+        Sequencer sequencer = acquireTestLockSequencer();
+        LockReply reply = acquireLock(sequencer);
+        Sequencer lockSequencer = reply.getUpdatedSequencer();
+        ReleaseReply releaseReply = releaseLock(lockSequencer);
+
+        assertThat(lockSequencer).isUpdatedFrom(sequencer);
+        assertThat(releaseReply.getUpdatedSequencer()).isUpdatedFrom(lockSequencer);
+        assertThat(releaseReply)
+                .hasNoNullFieldsOrProperties()
+                .hasFieldOrPropertyWithValue("success", true);
+    }
+
+    // lock can't be unlocked by someone else
+    @Test
+    public void itShouldNotBeAbleToReleaseLockWithOtherSequencer() {
+        createTestLock();
+        Sequencer lockSequencer = acquireTestLockSequencer();
+        Sequencer badUnlockSequencer = acquireTestLockSequencer();
+
+        acquireLock(lockSequencer);
+        ReleaseReply releaseReply = releaseLock(badUnlockSequencer);
+
+        assertThat(releaseReply).hasNoNullFieldsOrProperties()
+                .hasFieldOrPropertyWithValue("success", false);
+        assertThat(releaseReply.getUpdatedSequencer()).isUpdatedFrom(badUnlockSequencer);
+    }
+
+    // invalid sequencer can't unlock
+    @Test
+    public void itShouldNotBeReleasedByAnInvalidSequencer() {
+        createTestLock();
+        Sequencer sequencer = acquireTestLockSequencer();
+        acquireLock(sequencer);
+
+        StatusRuntimeException throwable = catchThrowableOfType(
+                () -> releaseLock(sequencer),
+                StatusRuntimeException.class
+        );
+
+        assertThat(throwable).isInvalidSequencerExceptionFor(TEST_LOCK_NAME);
+    }
+
+
+    // Timeout unlocks? -> lock implementation
+    // TODO: Consider mocks for the timeout implementations to pass in a clock spy object
 
      // Helper Methods
 
@@ -294,5 +341,13 @@ public class ServerTests {
                         .setSequencer(sequencer)
                         .build()
         ).getUpdatedSequencer();
+    }
+
+    private ReleaseReply releaseLock(Sequencer sequencer) {
+        return plumpBlockingStub.releaseLock(
+                ReleaseRequest.newBuilder()
+                        .setSequencer(sequencer)
+                        .build()
+        );
     }
 }

@@ -105,6 +105,7 @@ public class Lock {
     public Sequencer keepAlive(Sequencer sequencer) throws NoSuchAlgorithmException, InvalidSequencerException {
         Instant effectiveTime = Instant.now(clock);
 
+        // We don't need to validate first anymore
         validateSequencer(sequencer);
 
         final Sequencer localSequencer = sequencers.get(sequencer.getSequenceNumber());
