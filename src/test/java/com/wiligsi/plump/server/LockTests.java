@@ -28,12 +28,8 @@ public class LockTests {
     private Clock testClock;
 
     @BeforeEach
-    public void beforeEach() {
-        try {
-            testLock = new Lock(TEST_LOCK_NAME);
-        } catch (NoSuchAlgorithmException noSuchAlgorithmException) {
-            throw new RuntimeException(noSuchAlgorithmException);
-        }
+    public void beforeEach() throws NoSuchAlgorithmException {
+        testLock = new Lock(TEST_LOCK_NAME);
         testClock = Clock.fixed(Instant.now(), ZoneId.systemDefault());
         testLock.setClock(testClock);
     }
@@ -69,7 +65,7 @@ public class LockTests {
     }
 
     @Test
-    public void itShouldLockWhenReady() throws NoSuchAlgorithmException, InvalidSequencerException {
+    public void itShouldLockWhenReady() throws InvalidSequencerException {
         final Sequencer sequencer = testLock.createSequencer();
 
         assertThat(testLock.acquire(sequencer)).isTrue();
@@ -78,7 +74,7 @@ public class LockTests {
     }
 
     @Test
-    public void itShouldUnlockWhenReady() throws NoSuchAlgorithmException, InvalidSequencerException {
+    public void itShouldUnlockWhenReady() throws InvalidSequencerException {
         final Sequencer sequencer = testLock.createSequencer();
 
         testLock.acquire(sequencer);
@@ -88,7 +84,7 @@ public class LockTests {
     }
 
     @Test
-    public void itShouldNotLetASequencerBeUsedTwice() throws NoSuchAlgorithmException, InvalidSequencerException {
+    public void itShouldNotLetASequencerBeUsedTwice() throws InvalidSequencerException {
         final Sequencer sequencer = testLock.createSequencer();
 
         testLock.acquire(sequencer);
@@ -101,7 +97,7 @@ public class LockTests {
     }
 
     @Test
-    public void itShouldOnlyLockWithHeadSequencer() throws NoSuchAlgorithmException, InvalidSequencerException {
+    public void itShouldOnlyLockWithHeadSequencer() throws InvalidSequencerException {
         final Sequencer sequencer =  testLock.createSequencer();
         final Sequencer secondarySequencer = testLock.createSequencer();
 
@@ -111,7 +107,7 @@ public class LockTests {
     }
 
     @Test
-    public void itShouldOnlyUnlockWithHeadSequencer() throws NoSuchAlgorithmException, InvalidSequencerException {
+    public void itShouldOnlyUnlockWithHeadSequencer() throws InvalidSequencerException {
         final Sequencer sequencer = testLock.createSequencer();
         final Sequencer secondarySequencer = testLock.createSequencer();
 
@@ -122,7 +118,7 @@ public class LockTests {
     }
 
     @Test
-    public void itShouldImplicitlyRemoveOverdueSequencer() throws NoSuchAlgorithmException, InvalidSequencerException {
+    public void itShouldImplicitlyRemoveOverdueSequencer() throws InvalidSequencerException {
         final Sequencer overdueSequencer = testLock.createSequencer();
         final Sequencer onTimeSequencer;
 
@@ -137,7 +133,7 @@ public class LockTests {
     }
 
     @Test
-    public void itShouldUnlockWhenHeadSequencerIsOverdue() throws NoSuchAlgorithmException, InvalidSequencerException {
+    public void itShouldUnlockWhenHeadSequencerIsOverdue() throws InvalidSequencerException {
         final Sequencer overdueSequencer = testLock.createSequencer();
         final Sequencer onTimeSequencer;
 
@@ -151,7 +147,7 @@ public class LockTests {
     }
 
     @Test
-    public void itShouldKeepSequencerAlive() throws NoSuchAlgorithmException, InvalidSequencerException {
+    public void itShouldKeepSequencerAlive() throws InvalidSequencerException {
         final Sequencer sequencer = testLock.createSequencer();
         setTestClockAhead(Duration.ofMinutes(1));
         final Sequencer aliveSequencer = testLock.keepAlive(sequencer);
@@ -165,7 +161,7 @@ public class LockTests {
     }
 
     @Test
-    public void itShouldKeepSequencerAliveInPlace() throws NoSuchAlgorithmException, InvalidSequencerException {
+    public void itShouldKeepSequencerAliveInPlace() throws InvalidSequencerException {
         final Sequencer headSequencer = testLock.createSequencer();
         final Sequencer keepAliveSequencer = testLock.createSequencer();
         setTestClockAhead(Duration.ofMinutes(1));

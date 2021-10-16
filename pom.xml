@@ -63,6 +63,7 @@
             <version>6.0.53</version>
             <scope>provided</scope> <!-- not needed at runtime -->
         </dependency>
+        <!-- TODO: Do I really REALLY need guava? -->
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>

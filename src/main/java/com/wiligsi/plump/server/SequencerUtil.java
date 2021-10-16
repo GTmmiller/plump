@@ -4,7 +4,6 @@ import com.wiligsi.plump.PlumpOuterClass.Sequencer;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.Base64;
 
@@ -29,9 +28,10 @@ public class SequencerUtil {
 
     public static void verifySequencer(
             Sequencer request,
-            Sequencer local
-    ) throws NoSuchAlgorithmException, InvalidSequencerException {
-        final String hashedRequestKey = hashKey(request.getKey());
+            Sequencer local,
+            MessageDigest digest
+    ) throws InvalidSequencerException {
+        final String hashedRequestKey = hashKey(request.getKey(), digest);
         boolean validSequencer = checkSequencer(request, local) &&
                 hashedRequestKey.equals(local.getKey()) &&
                 request.getExpiration() == local.getExpiration();
@@ -41,8 +41,7 @@ public class SequencerUtil {
         }
     }
 
-    public static String hashKey(String key) throws NoSuchAlgorithmException {
-        final MessageDigest digest = MessageDigest.getInstance("SHA3-256");
+    public static String hashKey(String key, MessageDigest digest) {
         final byte[] hashedBytes = digest.digest(key.getBytes(StandardCharsets.UTF_8));
         final Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
         return encoder.encodeToString(hashedBytes);

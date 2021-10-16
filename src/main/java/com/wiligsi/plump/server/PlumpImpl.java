@@ -32,8 +32,6 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
             return;
         }
 
-        // ToDo: Better exception variable names
-
         final Lock createLock;
         try {
            createLock = new Lock(createName.getDisplayName());
@@ -76,17 +74,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         }
 
         final PlumpOuterClass.Sequencer responseSequencer;
-        try {
-            responseSequencer = locks.get(requestLockName).createSequencer();
-        } catch (NoSuchAlgorithmException algorithmException) {
-            responseObserver.onError(
-                    Status.INTERNAL
-                            .withDescription(algorithmException.getMessage())
-                            .withCause(algorithmException.getCause())
-                            .asException()
-            );
-            return;
-        }
+        responseSequencer = locks.get(requestLockName).createSequencer();
 
         responseObserver.onNext(
                 PlumpOuterClass.SequencerReply.newBuilder()
@@ -120,14 +108,6 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         } catch (InvalidSequencerException exception) {
             responseObserver.onError(
                     Status.INVALID_ARGUMENT
-                            .withDescription(exception.getMessage())
-                            .withCause(exception)
-                            .asException()
-            );
-            return;
-        } catch (NoSuchAlgorithmException exception) {
-            responseObserver.onError(
-                    Status.INTERNAL
                             .withDescription(exception.getMessage())
                             .withCause(exception)
                             .asException()
@@ -170,13 +150,6 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
                             .withCause(exception)
                             .asException()
             );
-        } catch (NoSuchAlgorithmException exception) {
-            responseObserver.onError(
-                    Status.INTERNAL
-                            .withDescription(exception.getMessage())
-                            .withCause(exception)
-                            .asException()
-            );
         }
 
         // TODO: or, combine all of the try/catch blocks and catch everything
@@ -211,13 +184,6 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         } catch (InvalidSequencerException exception) {
             responseObserver.onError(
                     Status.INVALID_ARGUMENT
-                            .withDescription(exception.getMessage())
-                            .withCause(exception)
-                            .asException()
-            );
-        } catch (NoSuchAlgorithmException exception) {
-            responseObserver.onError(
-                    Status.INTERNAL
                             .withDescription(exception.getMessage())
                             .withCause(exception)
                             .asException()

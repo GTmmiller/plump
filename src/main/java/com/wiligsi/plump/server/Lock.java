@@ -2,6 +2,7 @@ package com.wiligsi.plump.server;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Clock;
@@ -21,6 +22,8 @@ import static com.wiligsi.plump.PlumpOuterClass.*;
 public class Lock {
     private static final Logger LOG = Logger.getLogger(PlumpServer.class.getName());
 
+    private static final String DEFAULT_DIGEST_ALGORITHM = "SHA3-256";
+
     final private LockName name;
     private final BlockingQueue<Integer> sequenceNumbers;
     private final ConcurrentMap<Integer, Sequencer> sequencers;
@@ -28,33 +31,45 @@ public class Lock {
     final private SecureRandom secureRandom;
     final private AtomicInteger nextSequenceNumber;
     private Clock clock;
+    private final MessageDigest digest;
 
-    public Lock(String name) throws NoSuchAlgorithmException, IllegalArgumentException {
+    public Lock(String name,  MessageDigest digest) throws IllegalArgumentException {
         this.name = new LockName(name);
+        this.digest = digest;
         this.clock = Clock.systemDefaultZone();
         this.sequenceNumbers = new LinkedBlockingQueue<>();
         this.sequencers = new ConcurrentHashMap<>();
         this.state = LockState.UNLOCKED;
         this.nextSequenceNumber = new AtomicInteger();
-        secureRandom = SecureRandom.getInstanceStrong();
-        LOG.info("Created new lock: " + this);
+        try {
+            secureRandom = SecureRandom.getInstanceStrong();
+        } catch (NoSuchAlgorithmException algorithmException) {
+            LOG.severe("Could not get a secure random instance!");
+            throw new RuntimeException(algorithmException);
+        }
+
+        LOG.fine("Created new lock: " + this);
     }
 
-    public boolean acquire(Sequencer request) throws NoSuchAlgorithmException, InvalidSequencerException {
+    public Lock(String name) throws IllegalArgumentException, NoSuchAlgorithmException {
+        this(name, MessageDigest.getInstance(DEFAULT_DIGEST_ALGORITHM));
+    }
+
+    public boolean acquire(Sequencer request) throws InvalidSequencerException {
         validateSequencer(request);
         pruneSequencers();
         final Optional<Sequencer> head = getHead();
         if (state == LockState.UNLOCKED &&
                 head.isPresent() &&
                 SequencerUtil.checkSequencer(request, head.get())) {
-            SequencerUtil.verifySequencer(request, head.get());
+            SequencerUtil.verifySequencer(request, head.get(), digest);
             state = LockState.LOCKED;
             return true;
         }
         return false;
     }
 
-    public boolean release(Sequencer request) throws NoSuchAlgorithmException, InvalidSequencerException {
+    public boolean release(Sequencer request) throws InvalidSequencerException {
         validateSequencer(request);
         pruneSequencers();
         final Optional<Sequencer> head = getHead();
@@ -62,7 +77,7 @@ public class Lock {
         if (state == LockState.LOCKED &&
                 head.isPresent() &&
                 SequencerUtil.checkSequencer(request, head.get())) {
-            SequencerUtil.verifySequencer(request, head.get());
+            SequencerUtil.verifySequencer(request, head.get(), digest);
 
             sequencers.remove(head.get().getSequenceNumber());
             sequenceNumbers.remove();
@@ -73,12 +88,12 @@ public class Lock {
         return false;
     }
 
-    public Sequencer createSequencer() throws NoSuchAlgorithmException {
+    public Sequencer createSequencer() {
         // get the params for the sequencer
         final Instant nextSequencerExpiration = Instant.now(clock).plus(Duration.ofMinutes(2));
         final int nextSequencerNumber = nextSequenceNumber.getAndIncrement();
         final String nextSequencerKey = generateRandomKey();
-        final String keyHash = SequencerUtil.hashKey(nextSequencerKey);
+        final String keyHash = SequencerUtil.hashKey(nextSequencerKey, digest);
 
         final Sequencer partialSequencer = Sequencer.newBuilder()
                 .setLockName(name.getDisplayName())
@@ -102,16 +117,16 @@ public class Lock {
                 .build();
     }
 
-    public Sequencer keepAlive(Sequencer sequencer) throws NoSuchAlgorithmException, InvalidSequencerException {
+    public Sequencer keepAlive(Sequencer sequencer) throws InvalidSequencerException {
         Instant effectiveTime = Instant.now(clock);
         validateSequencer(sequencer);
 
         final Sequencer localSequencer = sequencers.get(sequencer.getSequenceNumber());
-        SequencerUtil.verifySequencer(sequencer, localSequencer);
+        SequencerUtil.verifySequencer(sequencer, localSequencer, digest);
 
         // Update the sequencer and return the new one
         final String newSequencerKey = generateRandomKey();
-        final String newSequencerKeyHash = SequencerUtil.hashKey(newSequencerKey);
+        final String newSequencerKeyHash = SequencerUtil.hashKey(newSequencerKey, digest);
         final Sequencer newLocalSequencer = Sequencer.newBuilder(localSequencer)
                 .setExpiration(effectiveTime.plus(Duration.ofMinutes(2)).toEpochMilli())
                 .setKey(newSequencerKeyHash)
@@ -140,8 +155,6 @@ public class Lock {
         if (!sequencers.containsKey(sequencer.getSequenceNumber())) {
             throw new InvalidSequencerException(name.getDisplayName());
         }
-
-        // Todo: change lock/unlock to acquire/release for consistency
 
         final Sequencer localSequencer = sequencers.get(sequencer.getSequenceNumber());
 
