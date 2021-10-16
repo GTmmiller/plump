@@ -190,14 +190,21 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
             LockName lockName = validateLockName(releaseSequencer.getLockName());
             Lock releaseLock = locks.get(lockName);
             boolean success = releaseLock.release(releaseSequencer);
-            PlumpOuterClass.Sequencer updatedSequencer = releaseLock.keepAlive(releaseSequencer);
-            responseObserver.onNext(
-                    PlumpOuterClass.ReleaseReply.newBuilder()
-                            .setKeepAliveInterval(Duration.ofMinutes(2).toMillis())
-                            .setUpdatedSequencer(updatedSequencer)
-                            .setSuccess(success)
-                            .build()
-            );
+            PlumpOuterClass.ReleaseReply.Builder replyBase = PlumpOuterClass.ReleaseReply.newBuilder()
+                    .setKeepAliveInterval(Duration.ofMinutes(2).toMillis())
+                    .setSuccess(success);
+
+            if (success) {
+                responseObserver.onNext(
+                        replyBase.build()
+                );
+            } else {
+                PlumpOuterClass.Sequencer updatedSequencer = releaseLock.keepAlive(releaseSequencer);
+                responseObserver.onNext(
+                        replyBase.setUpdatedSequencer(updatedSequencer)
+                                .build()
+                );
+            }
             responseObserver.onCompleted();
         } catch (StatusException exception) {
             responseObserver.onError(exception);

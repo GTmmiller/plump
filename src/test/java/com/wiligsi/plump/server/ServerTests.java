@@ -243,9 +243,7 @@ public class ServerTests {
         ReleaseReply releaseReply = releaseLock(lockSequencer);
 
         assertThat(lockSequencer).isUpdatedFrom(sequencer);
-        assertThat(releaseReply.getUpdatedSequencer()).isUpdatedFrom(lockSequencer);
         assertThat(releaseReply)
-                .hasNoNullFieldsOrProperties()
                 .hasFieldOrPropertyWithValue("success", true);
     }
 
