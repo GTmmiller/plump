@@ -126,7 +126,6 @@ public class LockTests {
         onTimeSequencer = testLock.createSequencer();
         setTestClockAhead(Duration.ofMinutes(2));
 
-        // TODO: probably should catch invalid
         assertThat(testLock.release(overdueSequencer)).isFalse();
         assertUnlocked(testLock);
         assertThat(testLock.getHeadSequencerNumber()).contains(onTimeSequencer.getSequenceNumber());

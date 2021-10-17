@@ -23,26 +23,24 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
     @Override
     public void createLock(PlumpOuterClass.CreateLockRequest request, StreamObserver<PlumpOuterClass.CreateLockReply> responseObserver) {
-        final LockName createName;
         try {
-            createName = validateLockName(request.getLockName());
-            ensureLockDoesNotExist(createName);
-        } catch (StatusException validationException) {
-            responseObserver.onError(validationException);
-            return;
+            final String newLockName = request.getLockName();
+            final Lock newLock = buildLock(newLockName);
+            Lock oldLock = locks.putIfAbsent(newLock.getName(), newLock);
+            if (oldLock != null) {
+                throw Status.ALREADY_EXISTS
+                        .withDescription(
+                                String.format(
+                                        "Lock named '%s' already exists",
+                                        newLockName
+                                )
+                        ).asException();
+            }
+            responseObserver.onNext(PlumpOuterClass.CreateLockReply.newBuilder().build());
+            responseObserver.onCompleted();
+        } catch (StatusException statusException) {
+            responseObserver.onError(statusException);
         }
-
-        final Lock createLock;
-        try {
-           createLock = new Lock(createName.getDisplayName());
-        } catch (NoSuchAlgorithmException algorithmException) {
-            responseObserver.onError(algorithmException);
-            return;
-        }
-
-        locks.put(createName, createLock);
-        responseObserver.onNext(PlumpOuterClass.CreateLockReply.newBuilder().build());
-        responseObserver.onCompleted();
     }
 
     @Override
@@ -230,15 +228,19 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         }
     }
 
-    protected void ensureLockDoesNotExist(LockName lockName) throws StatusException {
-        if (locks.containsKey(lockName)) {
-            throw Status.ALREADY_EXISTS
-                    .withDescription(
-                            String.format(
-                                    "Lock named '%s' already exists",
-                                    lockName.getDisplayName()
-                            )
-                    ).asException();
+    protected Lock buildLock(String lockName) throws StatusException {
+        try {
+            return new Lock(lockName);
+        } catch (IllegalArgumentException argumentException) {
+            throw asStatusException(Status.INVALID_ARGUMENT, argumentException);
+        } catch (NoSuchAlgorithmException algorithmException) {
+            throw asStatusException(Status.INTERNAL, algorithmException);
         }
+    }
+
+    protected StatusException asStatusException(Status status, Throwable exception) {
+        return status.withDescription(exception.getMessage())
+                .withCause(exception)
+                .asException();
     }
 }
