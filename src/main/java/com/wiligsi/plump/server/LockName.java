@@ -1,7 +1,5 @@
 package com.wiligsi.plump.server;
 
-import com.google.common.base.Preconditions;
-
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -13,13 +11,15 @@ public class LockName {
 
     public LockName(String displayName) throws IllegalArgumentException {
         Matcher lockNameMatcher = LOCK_NAME_REGEX.matcher(displayName);
-        Preconditions.checkArgument(
-                lockNameMatcher.matches(),
-                String.format(
-                        "LockName '%s' is invalid. Names should be a series of 4-12 alphanumeric characters",
-                        displayName
-                )
-        );
+        if(!lockNameMatcher.matches()) {
+            throw new IllegalArgumentException(
+                    String.format(
+                            "LockName '%s' is invalid. Names should be a series of 4-12 alphanumeric characters",
+                            displayName
+                    )
+            );
+        }
+
         this.displayName = displayName;
         internalName = this.displayName.toLowerCase();
     }

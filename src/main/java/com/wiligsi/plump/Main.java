@@ -1,6 +1,5 @@
 package com.wiligsi.plump;
 
-import com.google.common.base.Preconditions;
 import com.wiligsi.plump.client.PlumpClient;
 import com.wiligsi.plump.server.PlumpServer;
 import io.grpc.ManagedChannel;
@@ -13,21 +12,19 @@ public class Main {
     private static final String USAGE = "usage: ./Plump [server|client clientMethod]";
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        Preconditions.checkArgument(
-                args.length > 0,
-                "Expected at least 1 argument but received " + args.length + " " + USAGE
-        );
-        Preconditions.checkArgument(
-                args.length < 4,
-                "Expected at most 2 arguments but received " + args.length + " " + USAGE
-        );
+        if (args.length == 0) {
+            System.out.println("Expected at least 1 argument but received " + args.length + " " + USAGE);
+            System.exit(-1);
+        } else if (args.length >= 3) {
+            System.out.println("Expected at most 2 arguments but received " + args.length + " " + USAGE);
+            System.exit(-2);
+        }
 
         final String commandArg = args[0].trim();
-        Preconditions.checkArgument(
-                commandArg.equalsIgnoreCase("server") ||
-                        commandArg.equalsIgnoreCase("client"),
-                String.format("Unknown argument %s. Expected 'server' or 'client'", commandArg)
-        );
+        if (!commandArg.equalsIgnoreCase("server") && !commandArg.equalsIgnoreCase("client")) {
+            System.out.printf("Unknown argument %s. Expected 'server' or 'client'%n", commandArg);
+            System.exit(-3);
+        }
 
         if (commandArg.equalsIgnoreCase("server")) {
             final PlumpServer server = new PlumpServer();

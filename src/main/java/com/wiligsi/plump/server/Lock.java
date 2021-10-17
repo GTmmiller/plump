@@ -1,7 +1,5 @@
 package com.wiligsi.plump.server;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -217,7 +215,6 @@ public class Lock {
         }
     }
 
-    @VisibleForTesting
     protected void setClock(Clock clock) {
         this.clock = clock;
     }
