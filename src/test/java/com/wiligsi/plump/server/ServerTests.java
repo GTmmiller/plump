@@ -142,7 +142,7 @@ public class ServerTests {
                 .hasFieldOrPropertyWithValue("lockName", TEST_LOCK_NAME)
                 .hasFieldOrPropertyWithValue("sequenceNumber", 0);
 
-        assertThat(testSequencer.getExpiration()).isGreaterThan(effectiveTime.toEpochMilli());
+        assertThat(testSequencer.getExpiration()).isGreaterThanOrEqualTo(effectiveTime.toEpochMilli());
     }
 
     // Should not lock when lock doesn't exist
@@ -175,7 +175,7 @@ public class ServerTests {
                 .hasFieldOrPropertyWithValue("lockName", sequencer.getLockName())
                 .hasFieldOrPropertyWithValue("sequenceNumber", sequencer.getSequenceNumber());
         assertThat(lockReply.getUpdatedSequencer().getKey()).isNotEqualTo(sequencer.getKey());
-        assertThat(lockReply.getUpdatedSequencer().getExpiration()).isGreaterThan(sequencer.getExpiration());
+        assertThat(lockReply.getUpdatedSequencer().getExpiration()).isGreaterThanOrEqualTo(sequencer.getExpiration());
     }
 
     // should not lock when sequencer is not head

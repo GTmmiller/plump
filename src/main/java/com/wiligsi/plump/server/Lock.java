@@ -24,6 +24,8 @@ public class Lock {
 
     private static final String DEFAULT_DIGEST_ALGORITHM = "SHA3-256";
 
+    private static final Duration DEFAULT_KEEP_ALIVE_INTERVAL = Duration.ofMinutes(2);
+
     final private LockName name;
     private final BlockingQueue<Integer> sequenceNumbers;
     private final ConcurrentMap<Integer, Sequencer> sequencers;
@@ -32,10 +34,12 @@ public class Lock {
     final private AtomicInteger nextSequenceNumber;
     private Clock clock;
     private final MessageDigest digest;
+    private final Duration keepAliveInterval;
 
-    public Lock(String name,  MessageDigest digest) throws IllegalArgumentException {
+    public Lock(String name,  MessageDigest digest, Duration keepAliveInterval) throws IllegalArgumentException {
         this.name = new LockName(name);
         this.digest = digest;
+        this.keepAliveInterval = keepAliveInterval;
         this.clock = Clock.systemDefaultZone();
         this.sequenceNumbers = new LinkedBlockingQueue<>();
         this.sequencers = new ConcurrentHashMap<>();
@@ -52,7 +56,11 @@ public class Lock {
     }
 
     public Lock(String name) throws IllegalArgumentException, NoSuchAlgorithmException {
-        this(name, MessageDigest.getInstance(DEFAULT_DIGEST_ALGORITHM));
+        this(name, MessageDigest.getInstance(DEFAULT_DIGEST_ALGORITHM), DEFAULT_KEEP_ALIVE_INTERVAL);
+    }
+
+    public Duration getKeepAliveInterval() {
+        return keepAliveInterval;
     }
 
     public boolean acquire(Sequencer request) throws InvalidSequencerException {
@@ -90,7 +98,7 @@ public class Lock {
 
     public Sequencer createSequencer() {
         // get the params for the sequencer
-        final Instant nextSequencerExpiration = Instant.now(clock).plus(Duration.ofMinutes(2));
+        final Instant nextSequencerExpiration = Instant.now(clock).plus(keepAliveInterval);
         final int nextSequencerNumber = nextSequenceNumber.getAndIncrement();
         final String nextSequencerKey = generateRandomKey();
         final String keyHash = SequencerUtil.hashKey(nextSequencerKey, digest);
@@ -128,7 +136,7 @@ public class Lock {
         final String newSequencerKey = generateRandomKey();
         final String newSequencerKeyHash = SequencerUtil.hashKey(newSequencerKey, digest);
         final Sequencer newLocalSequencer = Sequencer.newBuilder(localSequencer)
-                .setExpiration(effectiveTime.plus(Duration.ofMinutes(2)).toEpochMilli())
+                .setExpiration(effectiveTime.plus(keepAliveInterval).toEpochMilli())
                 .setKey(newSequencerKeyHash)
                 .build();
         sequencers.put(newLocalSequencer.getSequenceNumber(), newLocalSequencer);

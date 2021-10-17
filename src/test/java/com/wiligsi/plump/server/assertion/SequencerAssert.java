@@ -14,7 +14,7 @@ public class SequencerAssert extends AbstractObjectAssert<SequencerAssert, Seque
         hasFieldOrPropertyWithValue("lockName", original.getLockName());
         hasFieldOrPropertyWithValue("sequenceNumber", original.getSequenceNumber());
         extracting("key").isNotEqualTo(original.getKey());
-        assertThat(actual.getExpiration()).isGreaterThan(original.getExpiration());
+        assertThat(actual.getExpiration()).isGreaterThanOrEqualTo(original.getExpiration());
 
         return this;
     }
