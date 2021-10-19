@@ -26,7 +26,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         try {
             final String newLockName = request.getLockName();
             // We can catch this later, but LockNames are small and Locks are much heavier
-            ensureLockDoesNotExist(newLockName);
+            ensureLockDoesNotExist(buildLockName(newLockName));
 
             final Lock newLock = buildLock(newLockName);
             Lock oldLock = locks.putIfAbsent(newLock.getName(), newLock);
@@ -56,24 +56,19 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
     @Override
     public void acquireSequencer(PlumpOuterClass.SequencerRequest request, StreamObserver<PlumpOuterClass.SequencerReply> responseObserver) {
-        final LockName requestLockName;
         try {
-            requestLockName = new LockName(request.getLockName());
-            ensureLockAlreadyExists(requestLockName);
+            final LockName requestLockName = buildLockName(request.getLockName());
+            final Lock requestLock = safeGetLock(requestLockName);
+            final PlumpOuterClass.Sequencer responseSequencer = requestLock.createSequencer();
+            responseObserver.onNext(
+                    PlumpOuterClass.SequencerReply.newBuilder()
+                            .setSequencer(responseSequencer)
+                            .build()
+            );
+            responseObserver.onCompleted();
         } catch (StatusException validationException) {
             responseObserver.onError(validationException);
-            return;
         }
-
-        final PlumpOuterClass.Sequencer responseSequencer;
-        responseSequencer = locks.get(requestLockName).createSequencer();
-
-        responseObserver.onNext(
-                PlumpOuterClass.SequencerReply.newBuilder()
-                        .setSequencer(responseSequencer)
-                        .build()
-        );
-        responseObserver.onCompleted();
     }
 
     @Override
@@ -200,21 +195,13 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
     protected void ensureLockAlreadyExists(LockName lockName) throws StatusException {
         if (!locks.containsKey(lockName)) {
-            throw Status.NOT_FOUND
-                    .withDescription(
-                            String.format(
-                                    "Lock named '%s' does not exist",
-                                    lockName.getDisplayName()
-                            )
-                    )
-                    .asException();
+            throw asLockDoesNotExistException(lockName);
         }
     }
 
-    protected void ensureLockDoesNotExist(String requestLockName) throws StatusException {
-        final LockName lockName = buildLockName(requestLockName);
+    protected void ensureLockDoesNotExist(LockName lockName) throws StatusException {
         if (locks.containsKey(lockName)) {
-            throw asLockAlreadyExistsException(requestLockName);
+            throw asLockAlreadyExistsException(lockName.getDisplayName());
         }
     }
 
@@ -250,5 +237,24 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
                                 lockName
                         )
                 ).asException();
+    }
+
+    protected StatusException asLockDoesNotExistException(LockName lockName) {
+        return Status.NOT_FOUND
+                .withDescription(
+                        String.format(
+                                "Lock named '%s' does not exist",
+                                lockName.getDisplayName()
+                        )
+                )
+                .asException();
+    }
+
+    protected Lock safeGetLock(LockName lockName) throws StatusException {
+        Lock getLock =  locks.get(lockName);
+        if (getLock == null) {
+            throw asLockDoesNotExistException(lockName);
+        }
+        return getLock;
     }
 }
