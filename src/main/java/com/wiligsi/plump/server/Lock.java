@@ -34,8 +34,8 @@ public class Lock {
     private final MessageDigest digest;
     private final Duration keepAliveInterval;
 
-    public Lock(String name,  MessageDigest digest, Duration keepAliveInterval) throws IllegalArgumentException {
-        this.name = new LockName(name);
+    public Lock(LockName name,  MessageDigest digest, Duration keepAliveInterval) throws IllegalArgumentException {
+        this.name = name;
         this.digest = digest;
         this.keepAliveInterval = keepAliveInterval;
         this.clock = Clock.systemDefaultZone();
@@ -54,6 +54,10 @@ public class Lock {
     }
 
     public Lock(String name) throws IllegalArgumentException, NoSuchAlgorithmException {
+        this(new LockName(name));
+    }
+
+    public Lock(LockName name) throws NoSuchAlgorithmException {
         this(name, MessageDigest.getInstance(DEFAULT_DIGEST_ALGORITHM), DEFAULT_KEEP_ALIVE_INTERVAL);
     }
 

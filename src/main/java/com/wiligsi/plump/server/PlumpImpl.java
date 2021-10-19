@@ -5,7 +5,6 @@ import io.grpc.Status;
 import io.grpc.StatusException;
 import io.grpc.stub.StreamObserver;
 import java.security.NoSuchAlgorithmException;
-import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Logger;
@@ -25,9 +24,10 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     @Override
     public void createLock(CreateLockRequest request, StreamObserver<CreateLockReply> responseObserver) {
         try {
-            final String newLockName = request.getLockName();
-            // We can catch this later, but LockNames are small and Locks are much heavier
-            ensureLockDoesNotExist(buildLockName(newLockName));
+            final LockName newLockName = buildLockName(request.getLockName());
+            if (locks.containsKey(newLockName)) {
+                throw asLockAlreadyExistsException(newLockName);
+            }
 
             final Lock newLock = buildLock(newLockName);
             Lock oldLock = locks.putIfAbsent(newLock.getName(), newLock);
@@ -46,7 +46,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         // TODO: make a key on creation/deletion so that only someone with the key can delete the lock
         try {
             final LockName destroyLockName = buildLockName(request.getLockName());
-            ensureLockAlreadyExists(destroyLockName);
+            ensureLockExists(destroyLockName);
             locks.remove(destroyLockName);
             responseObserver.onNext(DestroyLockReply.newBuilder().build());
             responseObserver.onCompleted();
@@ -59,6 +59,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     public void acquireSequencer(SequencerRequest request, StreamObserver<SequencerReply> responseObserver) {
         try {
             final LockName requestLockName = buildLockName(request.getLockName());
+            ensureLockExists(requestLockName);
             final Lock requestLock = safeGetLock(requestLockName);
             final Sequencer responseSequencer = requestLock.createSequencer();
             responseObserver.onNext(
@@ -74,74 +75,54 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
     @Override
     public void acquireLock(LockRequest request, StreamObserver<LockReply> responseObserver) {
-        final Sequencer requestSequencer = request.getSequencer();
-        final LockName requestLockName;
         try {
-            requestLockName = new LockName(requestSequencer.getLockName());
-            ensureLockAlreadyExists(requestLockName);
-        } catch (StatusException validationException) {
-            responseObserver.onError(validationException);
-            return;
-        }
-        // TODO: Malformed lock name consideration
-        // TODO: Break common stuff out into more methods
-        // TODO: Use typed methods to send errors and stuff
+            final Sequencer requestSequencer = request.getSequencer();
+            final LockName requestLockName = buildLockName(requestSequencer.getLockName());
+            ensureLockExists(requestLockName);
+            final Lock acquireLock = safeGetLock(requestLockName);
+            final Sequencer keepAliveSequencer = acquireLock.keepAlive(requestSequencer);
+            final boolean success = acquireLock.acquire(keepAliveSequencer);
 
-        final Lock acquireLock = locks.get(requestLockName);
-        final boolean success;
-        final Sequencer keepAliveSequencer;
-        try {
-            success = acquireLock.acquire(requestSequencer);
-            keepAliveSequencer = acquireLock.keepAlive(requestSequencer);
-        } catch (InvalidSequencerException exception) {
-            responseObserver.onError(
-                    Status.INVALID_ARGUMENT
-                            .withDescription(exception.getMessage())
-                            .withCause(exception)
-                            .asException()
-            );
-            return;
-        }
-
-        responseObserver.onNext(
-                LockReply.newBuilder()
-                        .setUpdatedSequencer(keepAliveSequencer)
-                        .setSuccess(success)
-                        .setKeepAliveInterval(Duration.ofMinutes(2).toMillis())
-                        .build()
-        );
-        responseObserver.onCompleted();
-    }
-
-    @Override
-    public void keepAlive(KeepAliveRequest request, StreamObserver<KeepAliveReply> responseObserver) {
-        final Sequencer requestSequencer = request.getSequencer();
-        final LockName requestLockName;
-        try {
-            requestLockName = buildLockName(requestSequencer.getLockName());
-            ensureLockAlreadyExists(requestLockName);
-            Lock keepAliveLock = locks.get(requestLockName);
-            Sequencer newSequencer =  keepAliveLock.keepAlive(requestSequencer);
             responseObserver.onNext(
-                    KeepAliveReply.newBuilder()
-                            .setUpdatedSequencer(newSequencer)
-                            .setKeepAliveInterval(Duration.ofMinutes(2).toMillis())
+                    LockReply.newBuilder()
+                            .setUpdatedSequencer(keepAliveSequencer)
+                            .setSuccess(success)
+                            .setKeepAliveInterval(acquireLock.getKeepAliveInterval().toMillis())
                             .build()
             );
             responseObserver.onCompleted();
         } catch (StatusException validationException) {
             responseObserver.onError(validationException);
-        } catch (InvalidSequencerException exception) {
+        } catch (InvalidSequencerException sequencerException) {
             responseObserver.onError(
-                    Status.INVALID_ARGUMENT
-                            .withDescription(exception.getMessage())
-                            .withCause(exception)
-                            .asException()
+                    asStatusException(Status.INVALID_ARGUMENT, sequencerException)
             );
         }
+    }
 
-        // TODO: or, combine all of the try/catch blocks and catch everything
+    @Override
+    public void keepAlive(KeepAliveRequest request, StreamObserver<KeepAliveReply> responseObserver) {
+        try {
+            final Sequencer requestSequencer = request.getSequencer();
+            final LockName requestLockName = buildLockName(requestSequencer.getLockName());
+            ensureLockExists(requestLockName);
 
+            final Lock keepAliveLock = safeGetLock(requestLockName);
+            Sequencer newSequencer =  keepAliveLock.keepAlive(requestSequencer);
+            responseObserver.onNext(
+                    KeepAliveReply.newBuilder()
+                            .setUpdatedSequencer(newSequencer)
+                            .setKeepAliveInterval(keepAliveLock.getKeepAliveInterval().toMillis())
+                            .build()
+            );
+            responseObserver.onCompleted();
+        } catch (StatusException validationException) {
+            responseObserver.onError(validationException);
+        } catch (InvalidSequencerException sequencerException) {
+            responseObserver.onError(
+                    asStatusException(Status.INVALID_ARGUMENT, sequencerException)
+            );
+        }
     }
 
     @Override
@@ -149,10 +130,12 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         try{
             Sequencer releaseSequencer = request.getSequencer();
             LockName lockName = buildLockName(releaseSequencer.getLockName());
-            Lock releaseLock = locks.get(lockName);
+            ensureLockExists(lockName);
+
+            Lock releaseLock = safeGetLock(lockName);
             boolean success = releaseLock.release(releaseSequencer);
             ReleaseReply.Builder replyBase = ReleaseReply.newBuilder()
-                    .setKeepAliveInterval(Duration.ofMinutes(2).toMillis())
+                    .setKeepAliveInterval(releaseLock.getKeepAliveInterval().toMillis())
                     .setSuccess(success);
 
             if (success) {
@@ -162,19 +145,15 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
             } else {
                 Sequencer updatedSequencer = releaseLock.keepAlive(releaseSequencer);
                 responseObserver.onNext(
-                        replyBase.setUpdatedSequencer(updatedSequencer)
-                                .build()
+                        replyBase.setUpdatedSequencer(updatedSequencer).build()
                 );
             }
             responseObserver.onCompleted();
         } catch (StatusException exception) {
             responseObserver.onError(exception);
-        } catch (InvalidSequencerException exception) {
+        } catch (InvalidSequencerException sequencerException) {
             responseObserver.onError(
-                    Status.INVALID_ARGUMENT
-                            .withDescription(exception.getMessage())
-                            .withCause(exception)
-                            .asException()
+                    asStatusException(Status.INVALID_ARGUMENT, sequencerException)
             );
         }
     }
@@ -194,15 +173,9 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         super.listLocks(request, responseObserver);
     }
 
-    protected void ensureLockAlreadyExists(LockName lockName) throws StatusException {
+    protected void ensureLockExists(LockName lockName) throws StatusException {
         if (!locks.containsKey(lockName)) {
             throw asLockDoesNotExistException(lockName);
-        }
-    }
-
-    protected void ensureLockDoesNotExist(LockName lockName) throws StatusException {
-        if (locks.containsKey(lockName)) {
-            throw asLockAlreadyExistsException(lockName.getDisplayName());
         }
     }
 
@@ -214,7 +187,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         }
     }
 
-    protected Lock buildLock(String lockName) throws StatusException {
+    protected Lock buildLock(LockName lockName) throws StatusException {
         try {
             return new Lock(lockName);
         } catch (IllegalArgumentException argumentException) {
@@ -224,18 +197,26 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         }
     }
 
+    protected Lock safeGetLock(LockName lockName) throws StatusException {
+        Lock getLock =  locks.get(lockName);
+        if (getLock == null) {
+            throw asLockDoesNotExistException(lockName);
+        }
+        return getLock;
+    }
+
     protected StatusException asStatusException(Status status, Throwable exception) {
         return status.withDescription(exception.getMessage())
                 .withCause(exception)
                 .asException();
     }
 
-    protected StatusException asLockAlreadyExistsException(String lockName) {
+    protected StatusException asLockAlreadyExistsException(LockName lockName) {
         return Status.ALREADY_EXISTS
                 .withDescription(
                         String.format(
                                 "Lock named '%s' already exists",
-                                lockName
+                                lockName.getDisplayName()
                         )
                 ).asException();
     }
@@ -249,13 +230,5 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
                         )
                 )
                 .asException();
-    }
-
-    protected Lock safeGetLock(LockName lockName) throws StatusException {
-        Lock getLock =  locks.get(lockName);
-        if (getLock == null) {
-            throw asLockDoesNotExistException(lockName);
-        }
-        return getLock;
     }
 }
