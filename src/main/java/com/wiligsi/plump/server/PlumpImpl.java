@@ -1,7 +1,6 @@
 package com.wiligsi.plump.server;
 
 import com.wiligsi.plump.PlumpGrpc;
-import com.wiligsi.plump.PlumpOuterClass;
 import io.grpc.Status;
 import io.grpc.StatusException;
 import io.grpc.stub.StreamObserver;
@@ -10,6 +9,8 @@ import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Logger;
+
+import static com.wiligsi.plump.PlumpOuterClass.*;
 
 public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
@@ -22,7 +23,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
 
     @Override
-    public void createLock(PlumpOuterClass.CreateLockRequest request, StreamObserver<PlumpOuterClass.CreateLockReply> responseObserver) {
+    public void createLock(CreateLockRequest request, StreamObserver<CreateLockReply> responseObserver) {
         try {
             final String newLockName = request.getLockName();
             // We can catch this later, but LockNames are small and Locks are much heavier
@@ -33,7 +34,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
             if (oldLock != null) {
                 throw asLockAlreadyExistsException(newLockName);
             }
-            responseObserver.onNext(PlumpOuterClass.CreateLockReply.newBuilder().build());
+            responseObserver.onNext(CreateLockReply.newBuilder().build());
             responseObserver.onCompleted();
         } catch (StatusException statusException) {
             responseObserver.onError(statusException);
@@ -41,13 +42,13 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
 
     @Override
-    public void destroyLock(PlumpOuterClass.DestroyLockRequest request, StreamObserver<PlumpOuterClass.DestroyLockReply> responseObserver) {
+    public void destroyLock(DestroyLockRequest request, StreamObserver<DestroyLockReply> responseObserver) {
         // TODO: make a key on creation/deletion so that only someone with the key can delete the lock
         try {
             final LockName destroyLockName = buildLockName(request.getLockName());
             ensureLockAlreadyExists(destroyLockName);
             locks.remove(destroyLockName);
-            responseObserver.onNext(PlumpOuterClass.DestroyLockReply.newBuilder().build());
+            responseObserver.onNext(DestroyLockReply.newBuilder().build());
             responseObserver.onCompleted();
         } catch (StatusException validationException) {
             responseObserver.onError(validationException);
@@ -55,13 +56,13 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
 
     @Override
-    public void acquireSequencer(PlumpOuterClass.SequencerRequest request, StreamObserver<PlumpOuterClass.SequencerReply> responseObserver) {
+    public void acquireSequencer(SequencerRequest request, StreamObserver<SequencerReply> responseObserver) {
         try {
             final LockName requestLockName = buildLockName(request.getLockName());
             final Lock requestLock = safeGetLock(requestLockName);
-            final PlumpOuterClass.Sequencer responseSequencer = requestLock.createSequencer();
+            final Sequencer responseSequencer = requestLock.createSequencer();
             responseObserver.onNext(
-                    PlumpOuterClass.SequencerReply.newBuilder()
+                    SequencerReply.newBuilder()
                             .setSequencer(responseSequencer)
                             .build()
             );
@@ -72,8 +73,8 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
 
     @Override
-    public void acquireLock(PlumpOuterClass.LockRequest request, StreamObserver<PlumpOuterClass.LockReply> responseObserver) {
-        final PlumpOuterClass.Sequencer requestSequencer = request.getSequencer();
+    public void acquireLock(LockRequest request, StreamObserver<LockReply> responseObserver) {
+        final Sequencer requestSequencer = request.getSequencer();
         final LockName requestLockName;
         try {
             requestLockName = new LockName(requestSequencer.getLockName());
@@ -88,7 +89,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
         final Lock acquireLock = locks.get(requestLockName);
         final boolean success;
-        final PlumpOuterClass.Sequencer keepAliveSequencer;
+        final Sequencer keepAliveSequencer;
         try {
             success = acquireLock.acquire(requestSequencer);
             keepAliveSequencer = acquireLock.keepAlive(requestSequencer);
@@ -103,7 +104,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         }
 
         responseObserver.onNext(
-                PlumpOuterClass.LockReply.newBuilder()
+                LockReply.newBuilder()
                         .setUpdatedSequencer(keepAliveSequencer)
                         .setSuccess(success)
                         .setKeepAliveInterval(Duration.ofMinutes(2).toMillis())
@@ -113,16 +114,16 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
 
     @Override
-    public void keepAlive(PlumpOuterClass.KeepAliveRequest request, StreamObserver<PlumpOuterClass.KeepAliveReply> responseObserver) {
-        final PlumpOuterClass.Sequencer requestSequencer = request.getSequencer();
+    public void keepAlive(KeepAliveRequest request, StreamObserver<KeepAliveReply> responseObserver) {
+        final Sequencer requestSequencer = request.getSequencer();
         final LockName requestLockName;
         try {
             requestLockName = buildLockName(requestSequencer.getLockName());
             ensureLockAlreadyExists(requestLockName);
             Lock keepAliveLock = locks.get(requestLockName);
-            PlumpOuterClass.Sequencer newSequencer =  keepAliveLock.keepAlive(requestSequencer);
+            Sequencer newSequencer =  keepAliveLock.keepAlive(requestSequencer);
             responseObserver.onNext(
-                    PlumpOuterClass.KeepAliveReply.newBuilder()
+                    KeepAliveReply.newBuilder()
                             .setUpdatedSequencer(newSequencer)
                             .setKeepAliveInterval(Duration.ofMinutes(2).toMillis())
                             .build()
@@ -144,13 +145,13 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
 
     @Override
-    public void releaseLock(PlumpOuterClass.ReleaseRequest request, StreamObserver<PlumpOuterClass.ReleaseReply> responseObserver) {
+    public void releaseLock(ReleaseRequest request, StreamObserver<ReleaseReply> responseObserver) {
         try{
-            PlumpOuterClass.Sequencer releaseSequencer = request.getSequencer();
+            Sequencer releaseSequencer = request.getSequencer();
             LockName lockName = buildLockName(releaseSequencer.getLockName());
             Lock releaseLock = locks.get(lockName);
             boolean success = releaseLock.release(releaseSequencer);
-            PlumpOuterClass.ReleaseReply.Builder replyBase = PlumpOuterClass.ReleaseReply.newBuilder()
+            ReleaseReply.Builder replyBase = ReleaseReply.newBuilder()
                     .setKeepAliveInterval(Duration.ofMinutes(2).toMillis())
                     .setSuccess(success);
 
@@ -159,7 +160,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
                         replyBase.build()
                 );
             } else {
-                PlumpOuterClass.Sequencer updatedSequencer = releaseLock.keepAlive(releaseSequencer);
+                Sequencer updatedSequencer = releaseLock.keepAlive(releaseSequencer);
                 responseObserver.onNext(
                         replyBase.setUpdatedSequencer(updatedSequencer)
                                 .build()
@@ -179,17 +180,17 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
 
     @Override
-    public void whoHasLock(PlumpOuterClass.WhoHasRequest request, StreamObserver<PlumpOuterClass.WhoHasReply> responseObserver) {
+    public void whoHasLock(WhoHasRequest request, StreamObserver<WhoHasReply> responseObserver) {
         super.whoHasLock(request, responseObserver);
     }
 
     @Override
-    public void nextSequencer(PlumpOuterClass.NextSequencerRequest request, StreamObserver<PlumpOuterClass.NextSequencerReply> responseObserver) {
+    public void nextSequencer(NextSequencerRequest request, StreamObserver<NextSequencerReply> responseObserver) {
         super.nextSequencer(request, responseObserver);
     }
 
     @Override
-    public void listLocks(PlumpOuterClass.ListRequest request, StreamObserver<PlumpOuterClass.ListReply> responseObserver) {
+    public void listLocks(ListRequest request, StreamObserver<ListReply> responseObserver) {
         super.listLocks(request, responseObserver);
     }
 
