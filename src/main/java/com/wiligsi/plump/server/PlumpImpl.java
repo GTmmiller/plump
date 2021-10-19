@@ -25,16 +25,13 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     public void createLock(PlumpOuterClass.CreateLockRequest request, StreamObserver<PlumpOuterClass.CreateLockReply> responseObserver) {
         try {
             final String newLockName = request.getLockName();
+            // We can catch this later, but LockNames are small and Locks are much heavier
+            ensureLockDoesNotExist(newLockName);
+
             final Lock newLock = buildLock(newLockName);
             Lock oldLock = locks.putIfAbsent(newLock.getName(), newLock);
             if (oldLock != null) {
-                throw Status.ALREADY_EXISTS
-                        .withDescription(
-                                String.format(
-                                        "Lock named '%s' already exists",
-                                        newLockName
-                                )
-                        ).asException();
+                throw asLockAlreadyExistsException(newLockName);
             }
             responseObserver.onNext(PlumpOuterClass.CreateLockReply.newBuilder().build());
             responseObserver.onCompleted();
@@ -46,18 +43,15 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     @Override
     public void destroyLock(PlumpOuterClass.DestroyLockRequest request, StreamObserver<PlumpOuterClass.DestroyLockReply> responseObserver) {
         // TODO: make a key on creation/deletion so that only someone with the key can delete the lock
-        final LockName destroyLockName;
         try {
-            destroyLockName = validateLockName(request.getLockName());
+            final LockName destroyLockName = buildLockName(request.getLockName());
             ensureLockAlreadyExists(destroyLockName);
+            locks.remove(destroyLockName);
+            responseObserver.onNext(PlumpOuterClass.DestroyLockReply.newBuilder().build());
+            responseObserver.onCompleted();
         } catch (StatusException validationException) {
             responseObserver.onError(validationException);
-            return;
         }
-
-        locks.remove(destroyLockName);
-        responseObserver.onNext(PlumpOuterClass.DestroyLockReply.newBuilder().build());
-        responseObserver.onCompleted();
     }
 
     @Override
@@ -128,7 +122,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         final PlumpOuterClass.Sequencer requestSequencer = request.getSequencer();
         final LockName requestLockName;
         try {
-            requestLockName = validateLockName(requestSequencer.getLockName());
+            requestLockName = buildLockName(requestSequencer.getLockName());
             ensureLockAlreadyExists(requestLockName);
             Lock keepAliveLock = locks.get(requestLockName);
             PlumpOuterClass.Sequencer newSequencer =  keepAliveLock.keepAlive(requestSequencer);
@@ -158,7 +152,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     public void releaseLock(PlumpOuterClass.ReleaseRequest request, StreamObserver<PlumpOuterClass.ReleaseReply> responseObserver) {
         try{
             PlumpOuterClass.Sequencer releaseSequencer = request.getSequencer();
-            LockName lockName = validateLockName(releaseSequencer.getLockName());
+            LockName lockName = buildLockName(releaseSequencer.getLockName());
             Lock releaseLock = locks.get(lockName);
             boolean success = releaseLock.release(releaseSequencer);
             PlumpOuterClass.ReleaseReply.Builder replyBase = PlumpOuterClass.ReleaseReply.newBuilder()
@@ -204,17 +198,6 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         super.listLocks(request, responseObserver);
     }
 
-    protected LockName validateLockName(String lockName) throws StatusException {
-        try {
-            return new LockName(lockName);
-        } catch (IllegalArgumentException exception) {
-            throw Status.INVALID_ARGUMENT
-                            .withDescription(exception.getLocalizedMessage())
-                            .withCause(exception)
-                            .asException();
-        }
-    }
-
     protected void ensureLockAlreadyExists(LockName lockName) throws StatusException {
         if (!locks.containsKey(lockName)) {
             throw Status.NOT_FOUND
@@ -225,6 +208,21 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
                             )
                     )
                     .asException();
+        }
+    }
+
+    protected void ensureLockDoesNotExist(String requestLockName) throws StatusException {
+        final LockName lockName = buildLockName(requestLockName);
+        if (locks.containsKey(lockName)) {
+            throw asLockAlreadyExistsException(requestLockName);
+        }
+    }
+
+    protected LockName buildLockName(String lockName) throws StatusException {
+        try {
+            return new LockName(lockName);
+        } catch (IllegalArgumentException argumentException) {
+            throw asStatusException(Status.INVALID_ARGUMENT, argumentException);
         }
     }
 
@@ -242,5 +240,15 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
         return status.withDescription(exception.getMessage())
                 .withCause(exception)
                 .asException();
+    }
+
+    protected StatusException asLockAlreadyExistsException(String lockName) {
+        return Status.ALREADY_EXISTS
+                .withDescription(
+                        String.format(
+                                "Lock named '%s' already exists",
+                                lockName
+                        )
+                ).asException();
     }
 }
