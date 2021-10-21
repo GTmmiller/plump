@@ -36,6 +36,8 @@ public class Lock {
 
     private Clock clock;
 
+    // TODO: Make some kind of 'check ownership' method with the lock
+
     public Lock(LockName name,  MessageDigest digest, Duration keepAliveInterval) throws IllegalArgumentException {
         this.name = name;
         this.digest = digest;
@@ -72,6 +74,7 @@ public class Lock {
         pruneSequencers();
         final Optional<Sequencer> head = getHead();
         // Should be an update and get or some kind of compare and update
+        final LockState originalState = state.get();
         final LockState updatedState = state.updateAndGet(state -> {
                 if (state == LockState.UNLOCKED &&
                         head.isPresent() &&
@@ -80,13 +83,13 @@ public class Lock {
                         SequencerUtil.verifySequencer(request, head.get(), digest);
                         return LockState.LOCKED;
                     } catch (InvalidSequencerException sequencerException) {
-                        LOG.severe("verification exception when attempting to acquire sequencer!");
+                        LOG.severe("verification exception when attempting to acquire lock!");
                         LOG.severe(sequencerException.getMessage());
                     }
                 }
                 return state;
             });
-        return updatedState == LockState.LOCKED;
+        return updatedState == LockState.LOCKED && updatedState != originalState;
     }
 
     public boolean release(Sequencer request) throws InvalidSequencerException {
@@ -94,18 +97,24 @@ public class Lock {
         pruneSequencers();
         final Optional<Sequencer> head = getHead();
 
-        if (state.get() == LockState.LOCKED &&
-                head.isPresent() &&
-                SequencerUtil.checkSequencer(request, head.get())) {
-            SequencerUtil.verifySequencer(request, head.get(), digest);
-
-            sequencers.remove(head.get().getSequenceNumber());
-            sequenceNumbers.remove();
-
-            state.set(LockState.UNLOCKED);
-            return true;
-        }
-        return false;
+        final LockState originalState = state.get();
+        final LockState updatedState = state.updateAndGet(state -> {
+            if (state == LockState.LOCKED &&
+                    head.isPresent() &&
+                    SequencerUtil.checkSequencer(request, head.get())) {
+                try {
+                    SequencerUtil.verifySequencer(request, head.get(), digest);
+                    sequencers.remove(head.get().getSequenceNumber());
+                    sequenceNumbers.remove();
+                    return LockState.UNLOCKED;
+                } catch (InvalidSequencerException sequencerException) {
+                    LOG.severe("verification exception when attempting to release lock!");
+                    LOG.severe(sequencerException.getMessage());
+                }
+            }
+            return state;
+        });
+        return updatedState == LockState.UNLOCKED && updatedState != originalState;
     }
 
     public Sequencer createSequencer() {

@@ -74,6 +74,15 @@ public class LockTests {
     }
 
     @Test
+    public void itShouldNotLockIfAlreadyLocked() throws InvalidSequencerException {
+        final Sequencer sequencer = testLock.createSequencer();
+        testLock.acquire(sequencer);
+        assertThat(testLock.acquire(sequencer)).isFalse();
+        assertLocked(testLock);
+        // TODO: Make a real assertion module for the locks as well
+    }
+
+    @Test
     public void itShouldUnlockWhenReady() throws InvalidSequencerException {
         final Sequencer sequencer = testLock.createSequencer();
 
