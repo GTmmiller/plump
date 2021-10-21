@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 
 import static com.wiligsi.plump.PlumpOuterClass.*;
@@ -24,15 +25,16 @@ public class Lock {
 
     private static final Duration DEFAULT_KEEP_ALIVE_INTERVAL = Duration.ofMinutes(2);
 
-    final private LockName name;
+    private final LockName name;
     private final BlockingQueue<Integer> sequenceNumbers;
     private final ConcurrentMap<Integer, Sequencer> sequencers;
-    private LockState state;
-    final private SecureRandom secureRandom;
-    final private AtomicInteger nextSequenceNumber;
-    private Clock clock;
+    private final SecureRandom secureRandom;
+    private final AtomicInteger nextSequenceNumber;
     private final MessageDigest digest;
     private final Duration keepAliveInterval;
+    private final AtomicReference<LockState> state;
+
+    private Clock clock;
 
     public Lock(LockName name,  MessageDigest digest, Duration keepAliveInterval) throws IllegalArgumentException {
         this.name = name;
@@ -41,7 +43,7 @@ public class Lock {
         this.clock = Clock.systemDefaultZone();
         this.sequenceNumbers = new LinkedBlockingQueue<>();
         this.sequencers = new ConcurrentHashMap<>();
-        this.state = LockState.UNLOCKED;
+        this.state = new AtomicReference<>(LockState.UNLOCKED);
         this.nextSequenceNumber = new AtomicInteger();
         try {
             secureRandom = SecureRandom.getInstanceStrong();
@@ -69,14 +71,22 @@ public class Lock {
         validateSequencer(request);
         pruneSequencers();
         final Optional<Sequencer> head = getHead();
-        if (state == LockState.UNLOCKED &&
-                head.isPresent() &&
-                SequencerUtil.checkSequencer(request, head.get())) {
-            SequencerUtil.verifySequencer(request, head.get(), digest);
-            state = LockState.LOCKED;
-            return true;
-        }
-        return false;
+        // Should be an update and get or some kind of compare and update
+        final LockState updatedState = state.updateAndGet(state -> {
+                if (state == LockState.UNLOCKED &&
+                        head.isPresent() &&
+                        SequencerUtil.checkSequencer(request, head.get())) {
+                    try {
+                        SequencerUtil.verifySequencer(request, head.get(), digest);
+                        return LockState.LOCKED;
+                    } catch (InvalidSequencerException sequencerException) {
+                        LOG.severe("verification exception when attempting to acquire sequencer!");
+                        LOG.severe(sequencerException.getMessage());
+                    }
+                }
+                return state;
+            });
+        return updatedState == LockState.LOCKED;
     }
 
     public boolean release(Sequencer request) throws InvalidSequencerException {
@@ -84,7 +94,7 @@ public class Lock {
         pruneSequencers();
         final Optional<Sequencer> head = getHead();
 
-        if (state == LockState.LOCKED &&
+        if (state.get() == LockState.LOCKED &&
                 head.isPresent() &&
                 SequencerUtil.checkSequencer(request, head.get())) {
             SequencerUtil.verifySequencer(request, head.get(), digest);
@@ -92,7 +102,7 @@ public class Lock {
             sequencers.remove(head.get().getSequenceNumber());
             sequenceNumbers.remove();
 
-            state = LockState.UNLOCKED;
+            state.set(LockState.UNLOCKED);
             return true;
         }
         return false;
@@ -158,7 +168,7 @@ public class Lock {
     }
 
     public LockState getState() {
-        return state;
+        return state.get();
     }
 
     protected void validateSequencer(Sequencer sequencer) throws InvalidSequencerException {
@@ -177,11 +187,11 @@ public class Lock {
         Instant effectiveTime = Instant.now(clock);
         final Optional<Sequencer> head = getHead();
 
-        if (state == LockState.LOCKED &&
+        if (state.get() == LockState.LOCKED &&
                 (head.isEmpty() ||
                 SequencerUtil.isExpired(head.get(), effectiveTime))
         ) {
-            state = LockState.UNLOCKED;
+            state.set(LockState.UNLOCKED);
         }
 
         Optional<Integer> removedSequenceNumber;
