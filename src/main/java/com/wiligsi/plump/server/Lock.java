@@ -118,12 +118,20 @@ public class Lock {
     }
 
     public Sequencer createSequencer() {
+        // TODO: the issue here is keeping the sequencers in order
+        // The integer is gathered long before it's put in the queue
+        // Would it be worth it to just pop it in when it's created and just handle
+        // dead sequencers? I think it might be
+
+        // Thought about this on and off today. I think the best conclusion is to just let them be out
+        // of order. having a few out of order sequencers I think is less of a problem and it still
+        // gives you a long-term idea of when you should be able to do something. Here's an idea though: if I had a head
+        // value then ugh then i'd have to make sure that works with multiple threads too
         // get the params for the sequencer
         final Instant nextSequencerExpiration = Instant.now(clock).plus(keepAliveInterval);
-        final int nextSequencerNumber = nextSequenceNumber.getAndIncrement();
         final String nextSequencerKey = generateRandomKey();
         final String keyHash = SequencerUtil.hashKey(nextSequencerKey, digest);
-
+        final int nextSequencerNumber = nextSequenceNumber.getAndIncrement();
         final Sequencer partialSequencer = Sequencer.newBuilder()
                 .setLockName(name.getDisplayName())
                 .setSequenceNumber(nextSequencerNumber)
