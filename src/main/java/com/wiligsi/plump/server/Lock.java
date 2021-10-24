@@ -8,10 +8,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Optional;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
@@ -26,10 +24,10 @@ public class Lock {
     private static final Duration DEFAULT_KEEP_ALIVE_INTERVAL = Duration.ofMinutes(2);
 
     private final LockName name;
-    private final BlockingQueue<Integer> sequenceNumbers;
     private final ConcurrentMap<Integer, Sequencer> sequencers;
     private final SecureRandom secureRandom;
     private final AtomicInteger nextSequenceNumber;
+    private final AtomicInteger headSequenceNumber;
     private final MessageDigest digest;
     private final Duration keepAliveInterval;
     private final AtomicReference<LockState> state;
@@ -37,13 +35,16 @@ public class Lock {
     private Clock clock;
 
     // TODO: Make some kind of 'check ownership' method with the lock
+    // takes in a sequencer. returns true if lock is currently locked and the sequencer is the head
+    // Useful for the application checking to make sure that the person who claims to have the lock
+    // actually has it
 
     public Lock(LockName name,  MessageDigest digest, Duration keepAliveInterval) throws IllegalArgumentException {
         this.name = name;
         this.digest = digest;
         this.keepAliveInterval = keepAliveInterval;
         this.clock = Clock.systemDefaultZone();
-        this.sequenceNumbers = new LinkedBlockingQueue<>();
+        this.headSequenceNumber = new AtomicInteger(0);
         this.sequencers = new ConcurrentHashMap<>();
         this.state = new AtomicReference<>(LockState.UNLOCKED);
         this.nextSequenceNumber = new AtomicInteger();
@@ -104,8 +105,6 @@ public class Lock {
                     SequencerUtil.checkSequencer(request, head.get())) {
                 try {
                     SequencerUtil.verifySequencer(request, head.get(), digest);
-                    sequencers.remove(head.get().getSequenceNumber());
-                    sequenceNumbers.remove();
                     return LockState.UNLOCKED;
                 } catch (InvalidSequencerException sequencerException) {
                     LOG.severe("verification exception when attempting to release lock!");
@@ -114,24 +113,22 @@ public class Lock {
             }
             return state;
         });
-        return updatedState == LockState.UNLOCKED && updatedState != originalState;
+
+        final boolean unlockSuccessful = updatedState == LockState.UNLOCKED && updatedState != originalState;
+
+        if (unlockSuccessful) {
+            final int oldHead = headSequenceNumber.getAndIncrement();
+            sequencers.remove(oldHead);
+        }
+        return unlockSuccessful;
     }
 
     public Sequencer createSequencer() {
-        // TODO: the issue here is keeping the sequencers in order
-        // The integer is gathered long before it's put in the queue
-        // Would it be worth it to just pop it in when it's created and just handle
-        // dead sequencers? I think it might be
-
-        // Thought about this on and off today. I think the best conclusion is to just let them be out
-        // of order. having a few out of order sequencers I think is less of a problem and it still
-        // gives you a long-term idea of when you should be able to do something. Here's an idea though: if I had a head
-        // value then ugh then i'd have to make sure that works with multiple threads too
-        // get the params for the sequencer
         final Instant nextSequencerExpiration = Instant.now(clock).plus(keepAliveInterval);
         final String nextSequencerKey = generateRandomKey();
         final String keyHash = SequencerUtil.hashKey(nextSequencerKey, digest);
         final int nextSequencerNumber = nextSequenceNumber.getAndIncrement();
+
         final Sequencer partialSequencer = Sequencer.newBuilder()
                 .setLockName(name.getDisplayName())
                 .setSequenceNumber(nextSequencerNumber)
@@ -145,8 +142,6 @@ public class Lock {
                         .setKey(keyHash)
                         .build()
         );
-
-        sequenceNumbers.add(nextSequencerNumber);
 
         // Return new sequencer
         return Sequencer.newBuilder(partialSequencer)
@@ -211,22 +206,28 @@ public class Lock {
             state.set(LockState.UNLOCKED);
         }
 
-        Optional<Integer> removedSequenceNumber;
+        Optional<Sequencer> removedSequencer;
         do {
-            removedSequenceNumber = pruneHead(effectiveTime);
-        } while (removedSequenceNumber.isPresent());
+            removedSequencer = pruneHead(effectiveTime);
+        } while (removedSequencer.isPresent());
     }
 
-    protected Optional<Integer> pruneHead(Instant effectiveTime) {
-        final Optional<Sequencer> head = getHead();
+    protected Optional<Sequencer> pruneHead(Instant effectiveTime) {
+        final int oldHead = headSequenceNumber.get();
+        final int newHead = headSequenceNumber.updateAndGet(headNumber -> {
+            final Sequencer head = sequencers.get(headNumber);
+            if (head != null && SequencerUtil.isExpired(head, effectiveTime)) {
+                return headNumber + 1;
+            }
+            return headNumber;
+        });
 
-        if (head.isPresent() && SequencerUtil.isExpired(head.get(), effectiveTime)) {
-            Integer headSequenceNumber = head.get().getSequenceNumber();
-            sequencers.remove(headSequenceNumber);
-            sequenceNumbers.remove();
-            return Optional.of(headSequenceNumber);
+        if (newHead > oldHead) {
+            final Sequencer removeHead = sequencers.remove(oldHead);
+            if (removeHead != null) {
+                return Optional.of(removeHead);
+            }
         }
-
         return Optional.empty();
     }
 
@@ -238,11 +239,11 @@ public class Lock {
     }
 
     protected Optional<Sequencer> getHead() {
-        Integer headSequenceNumber = sequenceNumbers.peek();
-        if (headSequenceNumber == null) {
+        final Sequencer headSequencer = sequencers.get(headSequenceNumber.get());
+        if (headSequencer == null) {
             return Optional.empty();
         } else {
-            return Optional.of(sequencers.get(headSequenceNumber));
+            return Optional.of(headSequencer);
         }
     }
 

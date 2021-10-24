@@ -331,7 +331,6 @@ public class ServerTests {
         );
     }
 
-    // TODO: Actually implement a keep alive interval. Would be a bigger thing with a config object probably.
     // TODO: make some actual timeout ones? I guess it's fine since we did it for the lock itself
     private Sequencer keepAliveSequencer(Sequencer sequencer) {
         return plumpBlockingStub.keepAlive(
