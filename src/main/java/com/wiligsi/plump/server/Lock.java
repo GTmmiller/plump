@@ -179,6 +179,10 @@ public class Lock {
         return head.map(Sequencer::getSequenceNumber);
     }
 
+    public int getNextSequenceNumber() {
+        return nextSequenceNumber.get();
+    }
+
     public LockState getState() {
         return state.get();
     }

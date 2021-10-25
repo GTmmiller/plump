@@ -277,6 +277,53 @@ public class ServerTests {
         assertThat(throwable).isInvalidSequencerExceptionFor(TEST_LOCK_NAME);
     }
 
+    // Introspection Tests
+
+    // Whohas returns locked false when nobody has the lock
+    @Test
+    public void itShouldIndicateIfNobodyHasTheLock() {
+        createTestLock();
+        assertThat(whoHasTestLock())
+                .hasFieldOrPropertyWithValue("locked", false)
+                .hasFieldOrPropertyWithValue("sequenceNumber", 0);
+    }
+
+    // Whohas returns the head sequencer number and true if someone has the lock
+    @Test
+    public void itShouldIndicateIfSomeoneHasTheLock() {
+        createTestLock();
+        final Sequencer sequencer = acquireTestLockSequencer();
+        acquireLock(sequencer);
+        assertThat(whoHasTestLock())
+                .hasNoNullFieldsOrProperties()
+                .hasFieldOrPropertyWithValue("locked", true)
+                .hasFieldOrPropertyWithValue("sequenceNumber", 0);
+    }
+
+    // Whohas errors if lock does not exist
+    @Test
+    public void itShouldErrorOnWhoHasWithNonexistantLock() {
+        final StatusRuntimeException throwable = catchThrowableOfType(
+                this::whoHasTestLock,
+                StatusRuntimeException.class
+        );
+
+        assertThat(throwable).isLockNameNotFoundExceptionFor(TEST_LOCK_NAME);
+    }
+
+    // Whohas errors if lockname is invalid
+    @Test
+    public void itShouldErrorOnWhoHasWithMalformedLockName() {
+        final String tooLongName = "ThisNameisTooLongAndInvalid";
+        final StatusRuntimeException throwable = catchThrowableOfType(
+                () -> whoHasLock(tooLongName),
+                StatusRuntimeException.class
+        );
+
+        assertThat(throwable).isInvalidLockNameException();
+    }
+
+
 
     // Timeout unlocks? -> lock implementation
     // TODO: Consider mocks for the timeout implementations to pass in a clock spy object
@@ -346,5 +393,17 @@ public class ServerTests {
                         .setSequencer(sequencer)
                         .build()
         );
+    }
+
+    private WhoHasReply whoHasLock(String lockName) {
+        return plumpBlockingStub.whoHasLock(
+                WhoHasRequest.newBuilder()
+                        .setLockName(lockName)
+                        .build()
+        );
+    }
+
+    private WhoHasReply whoHasTestLock() {
+        return whoHasLock(TEST_LOCK_NAME);
     }
 }

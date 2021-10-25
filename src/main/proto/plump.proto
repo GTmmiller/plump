@@ -92,7 +92,8 @@ message WhoHasRequest {
 }
 
 message WhoHasReply {
-    string ip_address = 1;
+    bool locked = 1;
+    uint32 sequence_number = 2;
 }
 
 // Next Sequencer
@@ -101,8 +102,7 @@ message NextSequencerRequest {
 }
 
 message NextSequencerReply {
-    string lock_name = 1;
-    uint32 sequencer_number = 2;
+    uint32 sequence_number = 1;
 }
 
 // List

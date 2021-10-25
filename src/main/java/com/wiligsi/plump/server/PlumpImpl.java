@@ -5,6 +5,7 @@ import io.grpc.Status;
 import io.grpc.StatusException;
 import io.grpc.stub.StreamObserver;
 import java.security.NoSuchAlgorithmException;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Logger;
@@ -160,7 +161,29 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
     @Override
     public void whoHasLock(WhoHasRequest request, StreamObserver<WhoHasReply> responseObserver) {
-        super.whoHasLock(request, responseObserver);
+        try {
+            final LockName requestName = buildLockName(request.getLockName());
+            ensureLockExists(requestName);
+            final Lock requestLock = safeGetLock(requestName);
+            final LockState state = requestLock.getState();
+            final Optional<Integer> headSequencerNumber = requestLock.getHeadSequencerNumber();
+
+            final WhoHasReply whoHasReply;
+            if (state == LockState.LOCKED && headSequencerNumber.isPresent()) {
+                whoHasReply = WhoHasReply.newBuilder()
+                        .setLocked(true)
+                        .setSequenceNumber(headSequencerNumber.get())
+                        .build();
+            } else {
+                whoHasReply = WhoHasReply.newBuilder()
+                        .setLocked(false)
+                        .build();
+            }
+            responseObserver.onNext(whoHasReply);
+            responseObserver.onCompleted();
+        } catch (StatusException statusException) {
+            responseObserver.onError(statusException);
+        }
     }
 
     @Override
