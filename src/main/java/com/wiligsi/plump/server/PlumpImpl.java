@@ -188,6 +188,22 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
     @Override
     public void nextSequencer(NextSequencerRequest request, StreamObserver<NextSequencerReply> responseObserver) {
+        try {
+            final LockName requestName = buildLockName(request.getLockName());
+            ensureLockExists(requestName);
+            final Lock requestLock = safeGetLock(requestName);
+            final int nextSequenceNumber = requestLock.getNextSequenceNumber();
+
+            responseObserver.onNext(
+                    NextSequencerReply.newBuilder()
+                            .setSequenceNumber(nextSequenceNumber)
+                            .build()
+            );
+            responseObserver.onCompleted();
+        } catch (StatusException statusException) {
+            responseObserver.onError(statusException);
+        }
+
         super.nextSequencer(request, responseObserver);
     }
 

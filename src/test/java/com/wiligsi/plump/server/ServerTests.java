@@ -323,7 +323,35 @@ public class ServerTests {
         assertThat(throwable).isInvalidLockNameException();
     }
 
+    // Get NextSequenceNumber valid
+    @Test
+    public void itShouldGetTheNextSequenceNumberFromValidLock() {
+        createTestLock();
+        acquireTestLockSequencer();
+        acquireTestLockSequencer();
+        assertThat(getNextTestLockSequenceNumber())
+                .hasFieldOrPropertyWithValue("sequenceNumber", 2);
+    }
 
+    // getnsn nonexistant lock
+    @Test
+    public void itShouldThrowErrorOnNonExistantLock() {
+        StatusRuntimeException throwable = catchThrowableOfType(
+                this::getNextTestLockSequenceNumber,
+                StatusRuntimeException.class
+        );
+        assertThat(throwable).isLockNameNotFoundExceptionFor(TEST_LOCK_NAME);
+    }
+    // getnsn invalid lock
+
+    @Test
+    public void itShouldThrowErrorOnInvalidLockName() {
+        StatusRuntimeException throwable = catchThrowableOfType(
+                () -> getNextSequenceNumber("Inv#*&$)(@#*&$alid"),
+                StatusRuntimeException.class
+        );
+        assertThat(throwable).isInvalidLockNameException();
+    }
 
     // Timeout unlocks? -> lock implementation
     // TODO: Consider mocks for the timeout implementations to pass in a clock spy object
@@ -405,5 +433,17 @@ public class ServerTests {
 
     private WhoHasReply whoHasTestLock() {
         return whoHasLock(TEST_LOCK_NAME);
+    }
+
+    private NextSequencerReply getNextSequenceNumber(String lockName) {
+        return plumpBlockingStub.nextSequencer(
+                NextSequencerRequest.newBuilder()
+                        .setLockName(lockName)
+                        .build()
+        );
+    }
+
+    private NextSequencerReply getNextTestLockSequenceNumber() {
+        return getNextSequenceNumber(TEST_LOCK_NAME);
     }
 }
