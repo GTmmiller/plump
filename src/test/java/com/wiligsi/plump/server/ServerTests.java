@@ -353,6 +353,25 @@ public class ServerTests {
         assertThat(throwable).isInvalidLockNameException();
     }
 
+    // Empty list for no locks
+    // TODO: should lock order matter on the locks? I guess you could add pagination or something or order flags
+    @Test
+    public void itShouldReturnEmptyListForNoLocks() {
+        assertThat(listLocks().getLockNamesCount()).isEqualTo(0);
+    }
+
+    // Should display all locks when requested
+    @Test
+    public void itShouldReturnListOfAllLocks() {
+        final String otherLockName = "otherLock";
+        createTestLock();
+        createLock(otherLockName);
+        final ListReply list = listLocks();
+        assertThat(list.getLockNamesCount()).isEqualTo(2);
+        assertThat(list.getLockNamesList()).contains(TEST_LOCK_NAME, otherLockName);
+    }
+
+
     // Timeout unlocks? -> lock implementation
     // TODO: Consider mocks for the timeout implementations to pass in a clock spy object
 
@@ -445,5 +464,11 @@ public class ServerTests {
 
     private NextSequencerReply getNextTestLockSequenceNumber() {
         return getNextSequenceNumber(TEST_LOCK_NAME);
+    }
+
+    private ListReply listLocks() {
+        return plumpBlockingStub.listLocks(
+                ListRequest.newBuilder().build()
+        );
     }
 }
