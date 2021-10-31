@@ -20,7 +20,7 @@ public class PlumpClient {
     public void createLock(String name) {
         LOG.info("Creating lock with name: " + name);
         CreateLockRequest request = CreateLockRequest.newBuilder().setLockName(name).build();
-        CreateLockReply response;
+        CreateLockResponse response;
 
         try {
             response = plumpBlockingStub.createLock(request);
@@ -34,7 +34,7 @@ public class PlumpClient {
     public void deleteLock(String name) {
         LOG.info("Deleting lock with name: " + name);
         DestroyLockRequest request = DestroyLockRequest.newBuilder().setLockName(name).build();
-        DestroyLockReply response;
+        DestroyLockResponse response;
 
         try {
             response = plumpBlockingStub.destroyLock(request);

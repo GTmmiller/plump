@@ -167,15 +167,15 @@ public class ServerTests {
     public void itShouldLockWhenSequencerIsOnTop() {
         createTestLock();
         Sequencer sequencer = acquireTestLockSequencer();
-        LockReply lockReply = acquireLock(sequencer);
+        LockResponse lockResponse = acquireLock(sequencer);
 
-        assertThat(lockReply).hasNoNullFieldsOrProperties()
+        assertThat(lockResponse).hasNoNullFieldsOrProperties()
                 .hasFieldOrPropertyWithValue("success", true);
-        assertThat(lockReply.getUpdatedSequencer())
+        assertThat(lockResponse.getUpdatedSequencer())
                 .hasFieldOrPropertyWithValue("lockName", sequencer.getLockName())
                 .hasFieldOrPropertyWithValue("sequenceNumber", sequencer.getSequenceNumber());
-        assertThat(lockReply.getUpdatedSequencer().getKey()).isNotEqualTo(sequencer.getKey());
-        assertThat(lockReply.getUpdatedSequencer().getExpiration()).isGreaterThanOrEqualTo(sequencer.getExpiration());
+        assertThat(lockResponse.getUpdatedSequencer().getKey()).isNotEqualTo(sequencer.getKey());
+        assertThat(lockResponse.getUpdatedSequencer().getExpiration()).isGreaterThanOrEqualTo(sequencer.getExpiration());
     }
 
     // should not lock when sequencer is not head
@@ -186,11 +186,11 @@ public class ServerTests {
         Sequencer firstSequencer = acquireTestLockSequencer();
         Sequencer secondSequencer = acquireTestLockSequencer();
 
-        LockReply failureReply = acquireLock(secondSequencer);
+        LockResponse failureResponse = acquireLock(secondSequencer);
 
-        assertThat(failureReply).hasNoNullFieldsOrProperties()
+        assertThat(failureResponse).hasNoNullFieldsOrProperties()
                 .hasFieldOrPropertyWithValue("success", false);
-        assertThat(failureReply.getUpdatedSequencer()).isUpdatedFrom(secondSequencer);
+        assertThat(failureResponse.getUpdatedSequencer()).isUpdatedFrom(secondSequencer);
     }
 
      @Test
@@ -238,12 +238,12 @@ public class ServerTests {
     public void itShouldBeAbleToReleaseALock() {
         createTestLock();
         Sequencer sequencer = acquireTestLockSequencer();
-        LockReply reply = acquireLock(sequencer);
-        Sequencer lockSequencer = reply.getUpdatedSequencer();
-        ReleaseReply releaseReply = releaseLock(lockSequencer);
+        LockResponse Response = acquireLock(sequencer);
+        Sequencer lockSequencer = Response.getUpdatedSequencer();
+        ReleaseResponse releaseResponse = releaseLock(lockSequencer);
 
         assertThat(lockSequencer).isUpdatedFrom(sequencer);
-        assertThat(releaseReply)
+        assertThat(releaseResponse)
                 .hasFieldOrPropertyWithValue("success", true);
     }
 
@@ -255,11 +255,11 @@ public class ServerTests {
         Sequencer badUnlockSequencer = acquireTestLockSequencer();
 
         acquireLock(lockSequencer);
-        ReleaseReply releaseReply = releaseLock(badUnlockSequencer);
+        ReleaseResponse releaseResponse = releaseLock(badUnlockSequencer);
 
-        assertThat(releaseReply).hasNoNullFieldsOrProperties()
+        assertThat(releaseResponse).hasNoNullFieldsOrProperties()
                 .hasFieldOrPropertyWithValue("success", false);
-        assertThat(releaseReply.getUpdatedSequencer()).isUpdatedFrom(badUnlockSequencer);
+        assertThat(releaseResponse.getUpdatedSequencer()).isUpdatedFrom(badUnlockSequencer);
     }
 
     // invalid sequencer can't unlock
@@ -366,7 +366,7 @@ public class ServerTests {
         final String otherLockName = "otherLock";
         createTestLock();
         createLock(otherLockName);
-        final ListReply list = listLocks();
+        final ListResponse list = listLocks();
         assertThat(list.getLockNamesCount()).isEqualTo(2);
         assertThat(list.getLockNamesList()).contains(TEST_LOCK_NAME, otherLockName);
     }
@@ -378,13 +378,13 @@ public class ServerTests {
      // Helper Methods
 
     private void createLock(String lockName) {
-        CreateLockReply createLockReply = plumpBlockingStub.createLock(
+        CreateLockResponse createLockResponse = plumpBlockingStub.createLock(
                 CreateLockRequest
                         .newBuilder()
                         .setLockName(lockName)
                         .build()
         );
-        assertThat(createLockReply.isInitialized()).isTrue();
+        assertThat(createLockResponse.isInitialized()).isTrue();
     }
 
     private void createTestLock() {
@@ -392,12 +392,12 @@ public class ServerTests {
     }
 
     private void destroyLock(String lockName) {
-        DestroyLockReply destroyLockReply = plumpBlockingStub.destroyLock(
+        DestroyLockResponse destroyLockResponse = plumpBlockingStub.destroyLock(
                 DestroyLockRequest.newBuilder()
                         .setLockName(lockName)
                         .build()
         );
-        assertThat(destroyLockReply.isInitialized()).isTrue();
+        assertThat(destroyLockResponse.isInitialized()).isTrue();
     }
 
     private void destroyTestLock() {
@@ -405,19 +405,19 @@ public class ServerTests {
     }
 
     private Sequencer acquireSequencer(String lockName) {
-        SequencerReply sequencerReply = plumpBlockingStub.acquireSequencer(
+        SequencerResponse sequencerResponse = plumpBlockingStub.acquireSequencer(
                 SequencerRequest.newBuilder()
                         .setLockName(lockName)
                         .build()
         );
-        return sequencerReply.getSequencer();
+        return sequencerResponse.getSequencer();
     }
 
     private Sequencer acquireTestLockSequencer() {
         return acquireSequencer(TEST_LOCK_NAME);
     }
 
-    private LockReply acquireLock(Sequencer sequencer) {
+    private LockResponse acquireLock(Sequencer sequencer) {
         return plumpBlockingStub.acquireLock(
                 LockRequest.newBuilder()
                         .setSequencer(sequencer)
@@ -434,7 +434,7 @@ public class ServerTests {
         ).getUpdatedSequencer();
     }
 
-    private ReleaseReply releaseLock(Sequencer sequencer) {
+    private ReleaseResponse releaseLock(Sequencer sequencer) {
         return plumpBlockingStub.releaseLock(
                 ReleaseRequest.newBuilder()
                         .setSequencer(sequencer)
@@ -442,7 +442,7 @@ public class ServerTests {
         );
     }
 
-    private WhoHasReply whoHasLock(String lockName) {
+    private WhoHasResponse whoHasLock(String lockName) {
         return plumpBlockingStub.whoHasLock(
                 WhoHasRequest.newBuilder()
                         .setLockName(lockName)
@@ -450,11 +450,11 @@ public class ServerTests {
         );
     }
 
-    private WhoHasReply whoHasTestLock() {
+    private WhoHasResponse whoHasTestLock() {
         return whoHasLock(TEST_LOCK_NAME);
     }
 
-    private NextSequencerReply getNextSequenceNumber(String lockName) {
+    private NextSequencerResponse getNextSequenceNumber(String lockName) {
         return plumpBlockingStub.nextSequencer(
                 NextSequencerRequest.newBuilder()
                         .setLockName(lockName)
@@ -462,11 +462,11 @@ public class ServerTests {
         );
     }
 
-    private NextSequencerReply getNextTestLockSequenceNumber() {
+    private NextSequencerResponse getNextTestLockSequenceNumber() {
         return getNextSequenceNumber(TEST_LOCK_NAME);
     }
 
-    private ListReply listLocks() {
+    private ListResponse listLocks() {
         return plumpBlockingStub.listLocks(
                 ListRequest.newBuilder().build()
         );

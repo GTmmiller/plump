@@ -5,20 +5,20 @@ option java_package = "com.wiligsi.plump";
 
 service Plump {
     // Application-level functions
-    rpc CreateLock (CreateLockRequest) returns (CreateLockReply) {}
-    rpc DestroyLock (DestroyLockRequest) returns (DestroyLockReply) {}
-    rpc AcquireSequencer (SequencerRequest) returns (SequencerReply) {}
-    rpc AcquireLock (LockRequest) returns (LockReply) {}
-    rpc KeepAlive (KeepAliveRequest) returns (KeepAliveReply) {}
-    rpc ReleaseLock (ReleaseRequest) returns(ReleaseReply) {}
+    rpc CreateLock (CreateLockRequest) returns (CreateLockResponse) {}
+    rpc DestroyLock (DestroyLockRequest) returns (DestroyLockResponse) {}
+    rpc AcquireSequencer (SequencerRequest) returns (SequencerResponse) {}
+    rpc AcquireLock (LockRequest) returns (LockResponse) {}
+    rpc KeepAlive (KeepAliveRequest) returns (KeepAliveResponse) {}
+    rpc ReleaseLock (ReleaseRequest) returns(ReleaseResponse) {}
 
     // Introspection functions
-    rpc WhoHasLock (WhoHasRequest) returns (WhoHasReply) {}
-    rpc NextSequencer (NextSequencerRequest) returns (NextSequencerReply) {}
-    rpc ListLocks (ListRequest) returns (ListReply) {}
+    rpc WhoHasLock (WhoHasRequest) returns (WhoHasResponse) {}
+    rpc NextSequencer (NextSequencerRequest) returns (NextSequencerResponse) {}
+    rpc ListLocks (ListRequest) returns (ListResponse) {}
 }
 
-// A container object for sequencers. Makes some of the response/replys
+// A container object for sequencers. Makes some of the response/Responses
 // a little redundant, but it helps internally. Might put this into a
 // different file
 message Sequencer {
@@ -33,7 +33,7 @@ message CreateLockRequest {
     string lock_name = 1;
 }
 
-message CreateLockReply {
+message CreateLockResponse {
 }
 
 // Destroy Lock
@@ -41,7 +41,7 @@ message DestroyLockRequest {
     string lock_name = 1;
 }
 
-message DestroyLockReply {
+message DestroyLockResponse {
 }
 
 // GetSequencer
@@ -50,7 +50,7 @@ message SequencerRequest {
 }
 
 
-message SequencerReply {
+message SequencerResponse {
     Sequencer sequencer = 1;    
 }
 
@@ -59,7 +59,7 @@ message LockRequest {
     Sequencer sequencer = 1;
 }
 
-message LockReply {
+message LockResponse {
     Sequencer updated_sequencer = 1;
     bool success = 2;
     uint64 keep_alive_interval = 3;
@@ -70,7 +70,7 @@ message KeepAliveRequest {
     Sequencer sequencer = 1;
 }
 
-message KeepAliveReply {
+message KeepAliveResponse {
     Sequencer updated_sequencer = 1;
     uint64 keep_alive_interval = 2;
 }
@@ -80,7 +80,7 @@ message ReleaseRequest {
     Sequencer sequencer = 1;
 }
 
-message ReleaseReply {
+message ReleaseResponse {
     Sequencer updated_sequencer = 1;
     bool success = 2;
     uint64 keep_alive_interval = 3;
@@ -91,7 +91,7 @@ message WhoHasRequest {
     string lock_name = 1;
 }
 
-message WhoHasReply {
+message WhoHasResponse {
     bool locked = 1;
     uint32 sequence_number = 2;
 }
@@ -101,7 +101,7 @@ message NextSequencerRequest {
     string lock_name = 1;
 }
 
-message NextSequencerReply {
+message NextSequencerResponse {
     uint32 sequence_number = 1;
 }
 
@@ -109,6 +109,6 @@ message NextSequencerReply {
 message ListRequest {
 }
 
-message ListReply {
+message ListResponse {
     repeated string lock_names = 1;
 }
