@@ -6,9 +6,11 @@ import io.grpc.StatusException;
 import io.grpc.stub.StreamObserver;
 import java.security.NoSuchAlgorithmException;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import static com.wiligsi.plump.PlumpOuterClass.*;
 
@@ -209,7 +211,17 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
     @Override
     public void listLocks(ListRequest request, StreamObserver<ListReply> responseObserver) {
-        super.listLocks(request, responseObserver);
+        // TODO: it would be easy to order since we're using stream operators already
+        final Set<String> lockNames = locks.keySet().stream()
+                .map(LockName::getDisplayName)
+                .collect(Collectors.toUnmodifiableSet());
+
+        final ListReply reply = ListReply.newBuilder()
+                .addAllLockNames(lockNames)
+                .build();
+
+        responseObserver.onNext(reply);
+        responseObserver.onCompleted();
     }
 
     protected void ensureLockExists(LockName lockName) throws StatusException {
