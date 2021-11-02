@@ -4,33 +4,33 @@ package plump;
 option java_package = "com.wiligsi.plump";
 
 service Plump {
-    // Application-level functions
-    rpc CreateLock (CreateLockRequest) returns (CreateLockResponse) {}
-    rpc DestroyLock (DestroyLockRequest) returns (DestroyLockResponse) {}
-    rpc AcquireSequencer (SequencerRequest) returns (SequencerResponse) {}
-    rpc AcquireLock (LockRequest) returns (LockResponse) {}
-    rpc KeepAlive (KeepAliveRequest) returns (KeepAliveResponse) {}
-    rpc ReleaseLock (ReleaseRequest) returns(ReleaseResponse) {}
+  // Application-level functions
+  rpc CreateLock (CreateLockRequest) returns (CreateLockResponse) {}
+  rpc DestroyLock (DestroyLockRequest) returns (DestroyLockResponse) {}
+  rpc AcquireSequencer (SequencerRequest) returns (SequencerResponse) {}
+  rpc AcquireLock (LockRequest) returns (LockResponse) {}
+  rpc KeepAlive (KeepAliveRequest) returns (KeepAliveResponse) {}
+  rpc ReleaseLock (ReleaseRequest) returns(ReleaseResponse) {}
 
-    // Introspection functions
-    rpc WhoHasLock (WhoHasRequest) returns (WhoHasResponse) {}
-    rpc NextSequencer (NextSequencerRequest) returns (NextSequencerResponse) {}
-    rpc ListLocks (ListRequest) returns (ListResponse) {}
+  // Introspection functions
+  rpc WhoHasLock (WhoHasRequest) returns (WhoHasResponse) {}
+  rpc NextSequencer (NextSequencerRequest) returns (NextSequencerResponse) {}
+  rpc ListLocks (ListRequest) returns (ListResponse) {}
 }
 
 // A container object for sequencers. Makes some of the response/Responses
 // a little redundant, but it helps internally. Might put this into a
 // different file
 message Sequencer {
-    string lock_name = 1;
-    uint32 sequence_number = 2;
-    string key = 3;
-    uint64 expiration = 4;
+  string lock_name = 1;
+  uint32 sequence_number = 2;
+  string key = 3;
+  uint64 expiration = 4;
 }
 
 // Create Lock
 message CreateLockRequest {
-    string lock_name = 1;
+  string lock_name = 1;
 }
 
 message CreateLockResponse {
@@ -38,7 +38,7 @@ message CreateLockResponse {
 
 // Destroy Lock
 message DestroyLockRequest {
-    string lock_name = 1;
+  string lock_name = 1;
 }
 
 message DestroyLockResponse {
@@ -46,63 +46,63 @@ message DestroyLockResponse {
 
 // GetSequencer
 message SequencerRequest {
-    string lock_name = 1;
+  string lock_name = 1;
 }
 
 
 message SequencerResponse {
-    Sequencer sequencer = 1;    
+  Sequencer sequencer = 1;
 }
 
 // GetLock
 message LockRequest {
-    Sequencer sequencer = 1;
+  Sequencer sequencer = 1;
 }
 
 message LockResponse {
-    Sequencer updated_sequencer = 1;
-    bool success = 2;
-    uint64 keep_alive_interval = 3;
+  Sequencer updated_sequencer = 1;
+  bool success = 2;
+  uint64 keep_alive_interval = 3;
 }
 
 // KeepAlive
 message KeepAliveRequest {
-    Sequencer sequencer = 1;
+  Sequencer sequencer = 1;
 }
 
 message KeepAliveResponse {
-    Sequencer updated_sequencer = 1;
-    uint64 keep_alive_interval = 2;
+  Sequencer updated_sequencer = 1;
+  uint64 keep_alive_interval = 2;
 }
 
 // ReleaseLock
 message ReleaseRequest {
-    Sequencer sequencer = 1;
+  Sequencer sequencer = 1;
 }
 
 message ReleaseResponse {
-    Sequencer updated_sequencer = 1;
-    bool success = 2;
-    uint64 keep_alive_interval = 3;
+  Sequencer updated_sequencer = 1;
+  bool success = 2;
+  uint64 keep_alive_interval = 3;
 }
 
 // WhoHas
 message WhoHasRequest {
-    string lock_name = 1;
+  string lock_name = 1;
 }
 
 message WhoHasResponse {
-    bool locked = 1;
-    uint32 sequence_number = 2;
+  bool locked = 1;
+  uint32 sequence_number = 2;
 }
 
 // Next Sequencer
 message NextSequencerRequest {
-    string lock_name = 1;
+  string lock_name = 1;
 }
 
 message NextSequencerResponse {
-    uint32 sequence_number = 1;
+  uint32 sequence_number = 1;
 }
 
 // List
@@ -110,5 +110,5 @@ message ListRequest {
 }
 
 message ListResponse {
-    repeated string lock_names = 1;
+  repeated string lock_names = 1;
 }
