@@ -1,7 +1,8 @@
 package com.wiligsi.plump.server;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeEach;
+import static com.wiligsi.plump.PlumpOuterClass.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
@@ -10,9 +11,8 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Optional;
 import java.util.function.Supplier;
-
-import static org.assertj.core.api.Assertions.*;
-import static com.wiligsi.plump.PlumpOuterClass.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class LockTests {
 

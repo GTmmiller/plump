@@ -1,9 +1,9 @@
 package com.wiligsi.plump.server.assertion;
 
-import org.assertj.core.api.AbstractObjectAssert;
-
 import static com.wiligsi.plump.PlumpOuterClass.*;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import org.assertj.core.api.AbstractObjectAssert;
 
 public class SequencerAssert extends AbstractObjectAssert<SequencerAssert, Sequencer> {
 

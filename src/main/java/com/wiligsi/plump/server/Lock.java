@@ -1,5 +1,7 @@
 package com.wiligsi.plump.server;
 
+import static com.wiligsi.plump.PlumpOuterClass.*;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -13,8 +15,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
-
-import static com.wiligsi.plump.PlumpOuterClass.*;
 
 public class Lock {
 
@@ -79,9 +79,9 @@ public class Lock {
     // Should be an update and get or some kind of compare and update
     final LockState originalState = state.get();
     final LockState updatedState = state.updateAndGet(state -> {
-      if (state == LockState.UNLOCKED &&
-          head.isPresent() &&
-          SequencerUtil.checkSequencer(request, head.get())) {
+      if (state == LockState.UNLOCKED
+          && head.isPresent()
+          && SequencerUtil.checkSequencer(request, head.get())) {
         try {
           SequencerUtil.verifySequencer(request, head.get(), digest);
           return LockState.LOCKED;
@@ -102,9 +102,9 @@ public class Lock {
 
     final LockState originalState = state.get();
     final LockState updatedState = state.updateAndGet(state -> {
-      if (state == LockState.LOCKED &&
-          head.isPresent() &&
-          SequencerUtil.checkSequencer(request, head.get())) {
+      if (state == LockState.LOCKED
+          && head.isPresent()
+          && SequencerUtil.checkSequencer(request, head.get())) {
         try {
           SequencerUtil.verifySequencer(request, head.get(), digest);
           return LockState.UNLOCKED;
@@ -206,9 +206,8 @@ public class Lock {
     Instant effectiveTime = Instant.now(clock);
     final Optional<Sequencer> head = getHead();
 
-    if (state.get() == LockState.LOCKED &&
-        (head.isEmpty() ||
-            SequencerUtil.isExpired(head.get(), effectiveTime))
+    if (state.get() == LockState.LOCKED
+        && (head.isEmpty() || SequencerUtil.isExpired(head.get(), effectiveTime))
     ) {
       state.set(LockState.UNLOCKED);
     }
@@ -258,12 +257,17 @@ public class Lock {
     this.clock = clock;
   }
 
+  // TODO: Just make this a format string this concat is filthy
   @Override
   public String toString() {
-    return "Lock{" +
-        "name='" + name + '\'' +
-        ", sequencers=" + sequencers +
-        ", state=" + state +
-        '}';
+    return "Lock{"
+        + "name='"
+        + name
+        + '\''
+        + ", sequencers="
+        + sequencers
+        + ", state="
+        + state
+        + '}';
   }
 }

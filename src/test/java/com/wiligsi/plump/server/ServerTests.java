@@ -1,25 +1,26 @@
 package com.wiligsi.plump.server;
 
 
+import static com.wiligsi.plump.PlumpOuterClass.*;
+import static com.wiligsi.plump.server.assertion.PlumpAssertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.wiligsi.plump.PlumpGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.StatusRuntimeException;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
+import java.io.IOException;
+import java.time.Instant;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import java.io.IOException;
-import java.time.Instant;
-import java.util.concurrent.TimeUnit;
-
-import static com.wiligsi.plump.PlumpOuterClass.*;
-import static org.assertj.core.api.Assertions.*;
-import static com.wiligsi.plump.server.assertion.PlumpAssertions.*;
 
 public class ServerTests {
 

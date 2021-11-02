@@ -1,9 +1,9 @@
 package com.wiligsi.plump.server.assertion;
 
+import static com.wiligsi.plump.PlumpOuterClass.*;
+
 import io.grpc.StatusRuntimeException;
 import org.assertj.core.api.InstanceOfAssertFactories;
-
-import static com.wiligsi.plump.PlumpOuterClass.*;
 
 public class PlumpAssertions implements InstanceOfAssertFactories {
 

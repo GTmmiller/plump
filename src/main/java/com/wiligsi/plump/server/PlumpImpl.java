@@ -1,5 +1,7 @@
 package com.wiligsi.plump.server;
 
+import static com.wiligsi.plump.PlumpOuterClass.*;
+
 import com.wiligsi.plump.PlumpGrpc;
 import io.grpc.Status;
 import io.grpc.StatusException;
@@ -11,8 +13,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-
-import static com.wiligsi.plump.PlumpOuterClass.*;
 
 public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 

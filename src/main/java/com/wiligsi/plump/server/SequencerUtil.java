@@ -1,7 +1,6 @@
 package com.wiligsi.plump.server;
 
 import com.wiligsi.plump.PlumpOuterClass.Sequencer;
-
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
@@ -22,8 +21,8 @@ public class SequencerUtil {
   }
 
   public static boolean checkSequencer(Sequencer request, Sequencer local) {
-    return request.getLockName().equals(local.getLockName()) &&
-        request.getSequenceNumber() == local.getSequenceNumber();
+    return request.getLockName().equals(local.getLockName())
+        && request.getSequenceNumber() == local.getSequenceNumber();
   }
 
   public static void verifySequencer(
@@ -32,9 +31,9 @@ public class SequencerUtil {
       MessageDigest digest
   ) throws InvalidSequencerException {
     final String hashedRequestKey = hashKey(request.getKey(), digest);
-    boolean validSequencer = checkSequencer(request, local) &&
-        hashedRequestKey.equals(local.getKey()) &&
-        request.getExpiration() == local.getExpiration();
+    boolean validSequencer = checkSequencer(request, local)
+        && hashedRequestKey.equals(local.getKey())
+        && request.getExpiration() == local.getExpiration();
 
     if (!validSequencer) {
       throw new InvalidSequencerException(local.getLockName());

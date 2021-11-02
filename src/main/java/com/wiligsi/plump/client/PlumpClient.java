@@ -1,12 +1,14 @@
 package com.wiligsi.plump.client;
 
+import static com.wiligsi.plump.PlumpOuterClass.CreateLockRequest;
+import static com.wiligsi.plump.PlumpOuterClass.CreateLockResponse;
+import static com.wiligsi.plump.PlumpOuterClass.DestroyLockRequest;
+import static com.wiligsi.plump.PlumpOuterClass.DestroyLockResponse;
+
 import com.wiligsi.plump.PlumpGrpc;
 import io.grpc.Channel;
 import io.grpc.StatusRuntimeException;
-
 import java.util.logging.Logger;
-
-import static com.wiligsi.plump.PlumpOuterClass.*;
 
 public class PlumpClient {
 

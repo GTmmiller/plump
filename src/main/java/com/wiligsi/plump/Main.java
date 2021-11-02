@@ -4,7 +4,6 @@ import com.wiligsi.plump.client.PlumpClient;
 import com.wiligsi.plump.server.PlumpServer;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
