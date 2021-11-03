@@ -14,6 +14,7 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
@@ -23,7 +24,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 public class ServerTests {
-
   private static final String TEST_LOCK_NAME = "testLock";
 
   private Server plumpServer;
@@ -31,7 +31,7 @@ public class ServerTests {
   private PlumpGrpc.PlumpBlockingStub plumpBlockingStub;
 
   @BeforeEach
-  public void createInProcessServerClient() throws IOException {
+  public void createInProcessServerClient() throws IOException, NoSuchAlgorithmException {
     String serverName = InProcessServerBuilder.generateName();
     plumpServer = InProcessServerBuilder.forName(serverName)
         .directExecutor()
@@ -66,10 +66,10 @@ public class ServerTests {
   }
 
   @Test
-  public void itShouldBePossibleToCreateALock() {
-    assertThatCode(
-        this::createTestLock
-    ).doesNotThrowAnyException();
+  public void itShouldReturnACodeOnLockCreation() {
+    final CreateLockResponse response = createTestLock();
+
+    assertThat(response).hasFieldOrProperty("destroyKey");
   }
 
   @ParameterizedTest
@@ -101,7 +101,7 @@ public class ServerTests {
     final String nonExistentName = "fakeLock";
 
     StatusRuntimeException throwable = catchThrowableOfType(
-        () -> destroyLock(nonExistentName),
+        () -> destroyLock(nonExistentName, "fakekey"),
         StatusRuntimeException.class
     );
 
@@ -110,12 +110,38 @@ public class ServerTests {
 
   @Test
   public void itShouldBeAbleToDeleteALock() {
-    createTestLock();
+    final String destroyKey = createTestLock().getDestroyKey();
 
     assertThatCode(
-        this::destroyTestLock
+        () -> destroyTestLock(destroyKey)
     ).doesNotThrowAnyException();
   }
+
+  @Test
+  public void itShouldOnlyDeleteALockWithTheRightCode() {
+    createTestLock();
+
+    StatusRuntimeException throwable = catchThrowableOfType(
+        () -> destroyTestLock("fakeKey"),
+        StatusRuntimeException.class
+    );
+
+    assertThat(throwable).isInvalidDestroyKeyExceptionFor(TEST_LOCK_NAME);
+  }
+
+  @Test
+  public void itShouldOnlyDeleteOnce() {
+    final String destroyKey = createTestLock().getDestroyKey();
+    destroyTestLock(destroyKey);
+
+    StatusRuntimeException throwable = catchThrowableOfType(
+        () -> destroyTestLock(destroyKey),
+        StatusRuntimeException.class
+    );
+
+    assertThat(throwable).isLockNameNotFoundExceptionFor(TEST_LOCK_NAME);
+  }
+
 
   @Test
   public void itShouldNotBeAbleToGetSequencerFromNonExistentLock() {
@@ -383,31 +409,31 @@ public class ServerTests {
 
   // Helper Methods
 
-  private void createLock(String lockName) {
-    CreateLockResponse createLockResponse = plumpBlockingStub.createLock(
+  private CreateLockResponse createLock(String lockName) {
+    return plumpBlockingStub.createLock(
         CreateLockRequest
             .newBuilder()
             .setLockName(lockName)
             .build()
     );
-    assertThat(createLockResponse.isInitialized()).isTrue();
   }
 
-  private void createTestLock() {
-    createLock(TEST_LOCK_NAME);
+  private CreateLockResponse createTestLock() {
+    return createLock(TEST_LOCK_NAME);
   }
 
-  private void destroyLock(String lockName) {
+  private void destroyLock(String lockName, String destroyKey) {
     DestroyLockResponse destroyLockResponse = plumpBlockingStub.destroyLock(
         DestroyLockRequest.newBuilder()
             .setLockName(lockName)
+            .setDestroyKey(destroyKey)
             .build()
     );
     assertThat(destroyLockResponse.isInitialized()).isTrue();
   }
 
-  private void destroyTestLock() {
-    destroyLock(TEST_LOCK_NAME);
+  private void destroyTestLock(String destroyKey) {
+    destroyLock(TEST_LOCK_NAME, destroyKey);
   }
 
   private Sequencer acquireSequencer(String lockName) {

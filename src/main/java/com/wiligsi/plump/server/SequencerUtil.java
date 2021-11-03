@@ -1,10 +1,8 @@
 package com.wiligsi.plump.server;
 
 import com.wiligsi.plump.PlumpOuterClass.Sequencer;
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
-import java.util.Base64;
 
 public class SequencerUtil {
 
@@ -30,7 +28,7 @@ public class SequencerUtil {
       Sequencer local,
       MessageDigest digest
   ) throws InvalidSequencerException {
-    final String hashedRequestKey = hashKey(request.getKey(), digest);
+    final String hashedRequestKey = KeyUtil.hashKey(request.getKey(), digest);
     boolean validSequencer = checkSequencer(request, local)
         && hashedRequestKey.equals(local.getKey())
         && request.getExpiration() == local.getExpiration();
@@ -39,11 +37,4 @@ public class SequencerUtil {
       throw new InvalidSequencerException(local.getLockName());
     }
   }
-
-  public static String hashKey(String key, MessageDigest digest) {
-    final byte[] hashedBytes = digest.digest(key.getBytes(StandardCharsets.UTF_8));
-    final Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
-    return encoder.encodeToString(hashedBytes);
-  }
-
 }

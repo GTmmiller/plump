@@ -8,7 +8,6 @@ import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -128,8 +127,8 @@ public class Lock {
 
   public Sequencer createSequencer() {
     final Instant nextSequencerExpiration = Instant.now(clock).plus(keepAliveInterval);
-    final String nextSequencerKey = generateRandomKey();
-    final String keyHash = SequencerUtil.hashKey(nextSequencerKey, digest);
+    final String nextSequencerKey = KeyUtil.generateRandomKey(secureRandom);
+    final String keyHash = hashKey(nextSequencerKey);
     final int nextSequencerNumber = nextSequenceNumber.getAndIncrement();
 
     final Sequencer partialSequencer = Sequencer.newBuilder()
@@ -160,8 +159,8 @@ public class Lock {
     SequencerUtil.verifySequencer(sequencer, localSequencer, digest);
 
     // Update the sequencer and return the new one
-    final String newSequencerKey = generateRandomKey();
-    final String newSequencerKeyHash = SequencerUtil.hashKey(newSequencerKey, digest);
+    final String newSequencerKey = KeyUtil.generateRandomKey(secureRandom);
+    final String newSequencerKeyHash = hashKey(newSequencerKey);
     final Sequencer newLocalSequencer = Sequencer.newBuilder(localSequencer)
         .setExpiration(effectiveTime.plus(keepAliveInterval).toEpochMilli())
         .setKey(newSequencerKeyHash)
@@ -237,11 +236,8 @@ public class Lock {
     return Optional.empty();
   }
 
-  protected String generateRandomKey() {
-    byte[] keyBytes = new byte[24];
-    secureRandom.nextBytes(keyBytes);
-    Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
-    return encoder.encodeToString(keyBytes);
+  protected String hashKey(String key) {
+    return KeyUtil.hashKey(key, digest);
   }
 
   protected Optional<Sequencer> getHead() {

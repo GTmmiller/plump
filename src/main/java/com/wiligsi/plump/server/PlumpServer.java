@@ -3,6 +3,7 @@ package com.wiligsi.plump.server;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -11,7 +12,7 @@ public class PlumpServer {
   private static final Logger LOG = Logger.getLogger(PlumpServer.class.getName());
   private Server server;
 
-  public void start() throws IOException {
+  public void start() throws IOException, NoSuchAlgorithmException {
     final int port = 50051;
 
     server = ServerBuilder.forPort(port)

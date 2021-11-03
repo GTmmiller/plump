@@ -65,4 +65,18 @@ public class StatusRuntimeExceptionAssert extends
         );
     return this;
   }
+
+  public StatusRuntimeExceptionAssert isInvalidDestroyKeyExceptionFor(String lockName) {
+    isInstanceOf(StatusRuntimeException.class);
+    hasMessageContaining("Cannot destroy lock");
+    hasMessageContaining(lockName);
+    hasMessageContaining("Destroy key is invalid");
+    hasFieldOrProperty("status");
+    extracting("status")
+        .hasFieldOrPropertyWithValue(
+            "code",
+            Status.INVALID_ARGUMENT.getCode()
+        );
+    return this;
+  }
 }

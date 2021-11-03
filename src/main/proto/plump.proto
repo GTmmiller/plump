@@ -34,11 +34,13 @@ message CreateLockRequest {
 }
 
 message CreateLockResponse {
+  string destroy_key = 1;
 }
 
 // Destroy Lock
 message DestroyLockRequest {
   string lock_name = 1;
+  string destroy_key = 2;
 }
 
 message DestroyLockResponse {

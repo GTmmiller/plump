@@ -6,7 +6,9 @@ import com.wiligsi.plump.PlumpGrpc;
 import io.grpc.Status;
 import io.grpc.StatusException;
 import io.grpc.stub.StreamObserver;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,11 +19,18 @@ import java.util.stream.Collectors;
 public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
   private static final Logger LOG = Logger.getLogger(PlumpImpl.class.getName());
+  private static final String DEFAULT_DIGEST_ALGORITHM = "SHA3-256";
   final ConcurrentMap<LockName, Lock> locks;
+  final ConcurrentMap<String, LockName> destroyKeyHashMap;
+  final SecureRandom secureRandom;
+  final MessageDigest digest;
 
-  public PlumpImpl() {
+  public PlumpImpl() throws NoSuchAlgorithmException {
     super();
     locks = new ConcurrentHashMap<>();
+    destroyKeyHashMap = new ConcurrentHashMap<>();
+    secureRandom = SecureRandom.getInstanceStrong();
+    digest = MessageDigest.getInstance(DEFAULT_DIGEST_ALGORITHM);
   }
 
   @Override
@@ -38,7 +47,14 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
       if (oldLock != null) {
         throw asLockAlreadyExistsException(newLockName);
       }
-      responseObserver.onNext(CreateLockResponse.newBuilder().build());
+
+      final String destroyKey = KeyUtil.generateRandomKey(secureRandom);
+      destroyKeyHashMap.put(KeyUtil.hashKey(destroyKey, digest), newLock.getName());
+
+      responseObserver.onNext(
+          CreateLockResponse.newBuilder()
+              .setDestroyKey(destroyKey)
+              .build());
       responseObserver.onCompleted();
     } catch (StatusException statusException) {
       responseObserver.onError(statusException);
@@ -52,7 +68,10 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     try {
       final LockName destroyLockName = buildLockName(request.getLockName());
       ensureLockExists(destroyLockName);
+      final String destroyKey = request.getDestroyKey();
+      verifyDestroyKey(destroyKey, destroyLockName);
       locks.remove(destroyLockName);
+      destroyKeyHashMap.remove(destroyKey);
       responseObserver.onNext(DestroyLockResponse.newBuilder().build());
       responseObserver.onCompleted();
     } catch (StatusException validationException) {
@@ -260,6 +279,22 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
       throw asLockDoesNotExistException(lockName);
     }
     return getLock;
+  }
+
+  protected void verifyDestroyKey(String destroyKey, LockName lockName) throws StatusException {
+    final String keyHash = KeyUtil.hashKey(destroyKey, digest);
+    final LockName expectedKeyName = destroyKeyHashMap.get(keyHash);
+    if (!lockName.equals(expectedKeyName)) {
+      throw Status.INVALID_ARGUMENT
+          .withDescription(
+              String.format(
+                  "Cannot destroy lock '%s'. Destroy key is invalid.",
+                  lockName.getDisplayName()
+              )
+          )
+          .asException();
+    }
+
   }
 
   protected StatusException asStatusException(Status status, Throwable exception) {

@@ -5,13 +5,14 @@ import com.wiligsi.plump.server.PlumpServer;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.TimeUnit;
 
 public class Main {
 
   private static final String USAGE = "usage: ./Plump [server|client clientMethod]";
 
-  public static void main(String[] args) throws IOException, InterruptedException {
+  public static void main(String[] args) throws IOException, InterruptedException, NoSuchAlgorithmException {
     if (args.length == 0) {
       System.out.println("Expected at least 1 argument but received " + args.length + " " + USAGE);
       System.exit(-1);
