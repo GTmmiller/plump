@@ -2,6 +2,7 @@ package com.wiligsi.plump.server.assertion;
 
 import static com.wiligsi.plump.PlumpOuterClass.*;
 
+import com.wiligsi.plump.server.Lock;
 import io.grpc.StatusRuntimeException;
 import org.assertj.core.api.InstanceOfAssertFactories;
 
@@ -16,5 +17,9 @@ public class PlumpAssertions implements InstanceOfAssertFactories {
 
   public static SequencerAssert assertThat(Sequencer actual) {
     return new SequencerAssert(actual);
+  }
+
+  public static LockAssert assertThat(Lock actual) {
+    return new LockAssert(actual);
   }
 }
