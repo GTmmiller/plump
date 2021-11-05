@@ -230,8 +230,6 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     } catch (StatusException statusException) {
       responseObserver.onError(statusException);
     }
-
-    super.nextSequencer(request, responseObserver);
   }
 
   @Override

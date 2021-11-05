@@ -19,6 +19,7 @@ import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -65,83 +66,88 @@ public class ServerTests {
     }
   }
 
-  @Test
-  public void itShouldReturnACodeOnLockCreation() {
-    final CreateLockResponse response = createTestLock();
+  @Nested
+  public class CreateLockTests {
+    @Test
+    public void itShouldReturnACodeOnLockCreation() {
+      final CreateLockResponse response = createTestLock();
 
-    assertThat(response).hasFieldOrProperty("destroyKey");
+      assertThat(response).hasFieldOrProperty("destroyKey");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"DamnLongLockName23232323232323", "sho", "$ymb)l*"})
+    public void itShouldRejectMalformedLockNames(String lockName) {
+      StatusRuntimeException throwable = catchThrowableOfType(
+          () -> createLock(lockName),
+          StatusRuntimeException.class
+      );
+
+      assertThat(throwable).isInvalidLockNameException();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"testLock", "TeSTLOck", "testlock"})
+    public void itShouldRejectDuplicateLockNames(String duplicateName) {
+      createTestLock();
+
+      StatusRuntimeException throwable = catchThrowableOfType(
+          () -> createLock(duplicateName),
+          StatusRuntimeException.class
+      );
+
+      assertThat(throwable).isLockNameAlreadyExistsExceptionFor(duplicateName);
+    }
   }
 
-  @ParameterizedTest
-  @ValueSource(strings = {"DamnLongLockName23232323232323", "sho", "$ymb)l*"})
-  public void itShouldRejectMalformedLockNames(String lockName) {
-    StatusRuntimeException throwable = catchThrowableOfType(
-        () -> createLock(lockName),
-        StatusRuntimeException.class
-    );
-    // Todo: Should I test the part of the message that has the lock name?
-    assertThat(throwable).isInvalidLockNameException();
+  @Nested
+  public class DestroyLockTests {
+    @Test
+    public void itShouldNotDestroyANonExistentLock() {
+      final String nonExistentName = "fakeLock";
+
+      StatusRuntimeException throwable = catchThrowableOfType(
+          () -> destroyLock(nonExistentName, "fakekey"),
+          StatusRuntimeException.class
+      );
+
+      assertThat(throwable).isLockNameNotFoundExceptionFor(nonExistentName);
+    }
+
+    @Test
+    public void itShouldBeAbleToDestroyALock() {
+      final String destroyKey = createTestLock().getDestroyKey();
+
+      assertThatCode(
+          () -> destroyTestLock(destroyKey)
+      ).doesNotThrowAnyException();
+    }
+
+    @Test
+    public void itShouldOnlyDestroyALockWithTheRightCode() {
+      createTestLock();
+
+      StatusRuntimeException throwable = catchThrowableOfType(
+          () -> destroyTestLock("fakeKey"),
+          StatusRuntimeException.class
+      );
+
+      assertThat(throwable).isInvalidDestroyKeyExceptionFor(TEST_LOCK_NAME);
+    }
+
+    @Test
+    public void itShouldOnlyDestroyOnce() {
+      final String destroyKey = createTestLock().getDestroyKey();
+      destroyTestLock(destroyKey);
+
+      StatusRuntimeException throwable = catchThrowableOfType(
+          () -> destroyTestLock(destroyKey),
+          StatusRuntimeException.class
+      );
+
+      assertThat(throwable).isLockNameNotFoundExceptionFor(TEST_LOCK_NAME);
+    }
   }
-
-  @ParameterizedTest
-  @ValueSource(strings = {"testLock", "TeSTLOck", "testlock"})
-  public void itShouldRejectDuplicateLockNames(String duplicateName) {
-    createTestLock();
-
-    StatusRuntimeException throwable = catchThrowableOfType(
-        () -> createLock(duplicateName),
-        StatusRuntimeException.class
-    );
-
-    assertThat(throwable).isLockNameAlreadyExistsExceptionFor(duplicateName);
-  }
-
-  @Test
-  public void itShouldNotDeleteANonExistentLock() {
-    final String nonExistentName = "fakeLock";
-
-    StatusRuntimeException throwable = catchThrowableOfType(
-        () -> destroyLock(nonExistentName, "fakekey"),
-        StatusRuntimeException.class
-    );
-
-    assertThat(throwable).isLockNameNotFoundExceptionFor(nonExistentName);
-  }
-
-  @Test
-  public void itShouldBeAbleToDeleteALock() {
-    final String destroyKey = createTestLock().getDestroyKey();
-
-    assertThatCode(
-        () -> destroyTestLock(destroyKey)
-    ).doesNotThrowAnyException();
-  }
-
-  @Test
-  public void itShouldOnlyDeleteALockWithTheRightCode() {
-    createTestLock();
-
-    StatusRuntimeException throwable = catchThrowableOfType(
-        () -> destroyTestLock("fakeKey"),
-        StatusRuntimeException.class
-    );
-
-    assertThat(throwable).isInvalidDestroyKeyExceptionFor(TEST_LOCK_NAME);
-  }
-
-  @Test
-  public void itShouldOnlyDeleteOnce() {
-    final String destroyKey = createTestLock().getDestroyKey();
-    destroyTestLock(destroyKey);
-
-    StatusRuntimeException throwable = catchThrowableOfType(
-        () -> destroyTestLock(destroyKey),
-        StatusRuntimeException.class
-    );
-
-    assertThat(throwable).isLockNameNotFoundExceptionFor(TEST_LOCK_NAME);
-  }
-
 
   @Test
   public void itShouldNotBeAbleToGetSequencerFromNonExistentLock() {
