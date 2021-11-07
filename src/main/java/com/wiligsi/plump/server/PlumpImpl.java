@@ -98,6 +98,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
   }
 
+  // TODO: make sure a null sequencer is handled here
   @Override
   public void acquireLock(LockRequest request, StreamObserver<LockResponse> responseObserver) {
     try {
@@ -125,6 +126,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
   }
 
+  // TODO: also handle null sequencers here
   @Override
   public void keepAlive(KeepAliveRequest request,
       StreamObserver<KeepAliveResponse> responseObserver) {
@@ -151,6 +153,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
   }
 
+  // TODO: handle null sequencer
   @Override
   public void releaseLock(ReleaseRequest request,
       StreamObserver<ReleaseResponse> responseObserver) {
@@ -211,6 +214,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
       responseObserver.onError(statusException);
     }
   }
+
 
   @Override
   public void nextSequencer(NextSequencerRequest request,
