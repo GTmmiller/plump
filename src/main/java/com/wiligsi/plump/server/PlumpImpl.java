@@ -64,7 +64,6 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
   @Override
   public void destroyLock(DestroyLockRequest request,
       StreamObserver<DestroyLockResponse> responseObserver) {
-    // TODO: make a key on creation/deletion so that only someone with the key can delete the lock
     try {
       final LockName destroyLockName = buildLockName(request.getLockName());
       ensureLockExists(destroyLockName);
@@ -98,10 +97,10 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
   }
 
-  // TODO: make sure a null sequencer is handled here
   @Override
   public void acquireLock(LockRequest request, StreamObserver<LockResponse> responseObserver) {
     try {
+      ensureHasSequencer(request.hasSequencer());
       final Sequencer requestSequencer = request.getSequencer();
       final LockName requestLockName = buildLockName(requestSequencer.getLockName());
       ensureLockExists(requestLockName);
@@ -126,11 +125,11 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
   }
 
-  // TODO: also handle null sequencers here
   @Override
   public void keepAlive(KeepAliveRequest request,
       StreamObserver<KeepAliveResponse> responseObserver) {
     try {
+      ensureHasSequencer(request.hasSequencer());
       final Sequencer requestSequencer = request.getSequencer();
       final LockName requestLockName = buildLockName(requestSequencer.getLockName());
       ensureLockExists(requestLockName);
@@ -153,11 +152,11 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
   }
 
-  // TODO: handle null sequencer
   @Override
   public void releaseLock(ReleaseRequest request,
       StreamObserver<ReleaseResponse> responseObserver) {
     try {
+      ensureHasSequencer(request.hasSequencer());
       Sequencer releaseSequencer = request.getSequencer();
       LockName lockName = buildLockName(releaseSequencer.getLockName());
       ensureLockExists(lockName);
@@ -254,6 +253,16 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
   protected void ensureLockExists(LockName lockName) throws StatusException {
     if (!locks.containsKey(lockName)) {
       throw asLockDoesNotExistException(lockName);
+    }
+  }
+
+  protected void ensureHasSequencer(boolean requestHasSequencer) throws StatusException {
+    if (!requestHasSequencer) {
+      throw Status.INVALID_ARGUMENT
+          .withDescription(
+              "Passed sequencer is null"
+          )
+          .asException();
     }
   }
 

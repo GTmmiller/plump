@@ -79,4 +79,16 @@ public class StatusRuntimeExceptionAssert extends
         );
     return this;
   }
+
+  public StatusRuntimeExceptionAssert isNullSequencerException() {
+    isInstanceOf(StatusRuntimeException.class);
+    hasMessageContaining("Passed sequencer is null");
+    hasFieldOrProperty("status");
+    extracting("status")
+        .hasFieldOrPropertyWithValue(
+            "code",
+            Status.INVALID_ARGUMENT.getCode()
+        );
+    return this;
+  }
 }

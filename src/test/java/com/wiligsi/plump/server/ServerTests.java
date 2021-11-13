@@ -245,6 +245,16 @@ public class ServerTests {
 
       assertThat(throwable).isInvalidSequencerExceptionFor(TEST_LOCK_NAME);
     }
+
+    @Test
+    public void itShouldErrorOnNullSequencer() {
+      StatusRuntimeException throwable = catchThrowableOfType(
+          () -> plumpBlockingStub.acquireLock(LockRequest.newBuilder().build()),
+          StatusRuntimeException.class
+      );
+
+      assertThat(throwable).isNullSequencerException();
+    }
   }
 
   @Nested
@@ -272,6 +282,16 @@ public class ServerTests {
       );
 
       assertThat(throwable).isInvalidSequencerExceptionFor(TEST_LOCK_NAME);
+    }
+
+    @Test
+    public void itShouldErrorOnNullSequencer() {
+      StatusRuntimeException throwable = catchThrowableOfType(
+          () -> plumpBlockingStub.keepAlive(KeepAliveRequest.newBuilder().build()),
+          StatusRuntimeException.class
+      );
+
+      assertThat(throwable).isNullSequencerException();
     }
   }
 
@@ -316,6 +336,16 @@ public class ServerTests {
       );
 
       assertThat(throwable).isInvalidSequencerExceptionFor(TEST_LOCK_NAME);
+    }
+
+    @Test
+    public void itShouldErrorOnNullSequencer() {
+      StatusRuntimeException throwable = catchThrowableOfType(
+          () -> plumpBlockingStub.releaseLock(ReleaseRequest.newBuilder().build()),
+          StatusRuntimeException.class
+      );
+
+      assertThat(throwable).isNullSequencerException();
     }
   }
 
