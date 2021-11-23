@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package plump;
-option java_package = "com.wiligsi.plump";
+option java_package = "com.wiligsi.plump.common";
 
 service Plump {
   // Application-level functions

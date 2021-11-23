@@ -1,6 +1,7 @@
 package com.wiligsi.plump.common;
 
-import com.wiligsi.plump.PlumpOuterClass.Sequencer;
+import static com.wiligsi.plump.common.PlumpOuterClass.Sequencer;
+
 import java.security.MessageDigest;
 import java.time.Instant;
 
