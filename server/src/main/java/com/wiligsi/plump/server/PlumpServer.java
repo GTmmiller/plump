@@ -9,7 +9,7 @@ import java.util.logging.Logger;
 
 public class PlumpServer {
 
-  private static final int DEFAULT_PORT = 50051;
+  static final int DEFAULT_PORT = 50051;
   private static final Logger LOG = Logger.getLogger(PlumpServer.class.getName());
 
   private Server server;
