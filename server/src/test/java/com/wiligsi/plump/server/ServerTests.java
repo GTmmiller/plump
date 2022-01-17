@@ -1,13 +1,13 @@
 package com.wiligsi.plump.server;
 
 
-import static com.wiligsi.plump.PlumpOuterClass.*;
+import static com.wiligsi.plump.common.PlumpOuterClass.*;
 import static com.wiligsi.plump.server.assertion.PlumpAssertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.wiligsi.plump.PlumpGrpc;
+import com.wiligsi.plump.common.PlumpGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.StatusRuntimeException;
@@ -73,7 +73,7 @@ public class ServerTests {
     public void itShouldReturnACodeOnLockCreation() {
       final CreateLockResponse response = createTestLock();
 
-      Assertions.assertThat(response).hasFieldOrProperty("destroyKey");
+      assertThat(response).hasFieldOrProperty("destroyKey");
     }
 
     @ParameterizedTest
@@ -159,7 +159,7 @@ public class ServerTests {
       StatusRuntimeException throwable = catchThrowableOfType(
           () -> {
             Sequencer fakeSequencer = acquireSequencer(fakeLockName);
-            Assertions.assertThat(fakeSequencer)
+            assertThat(fakeSequencer)
                 .hasNoNullFieldsOrProperties()
                 .hasFieldOrPropertyWithValue("lockName", fakeLockName);
           },
@@ -176,12 +176,12 @@ public class ServerTests {
 
       final Sequencer testSequencer = acquireTestLockSequencer();
 
-      Assertions.assertThat(testSequencer)
+      assertThat(testSequencer)
           .hasNoNullFieldsOrProperties()
           .hasFieldOrPropertyWithValue("lockName", TEST_LOCK_NAME)
           .hasFieldOrPropertyWithValue("sequenceNumber", 0);
 
-      Assertions.assertThat(testSequencer.getExpiration()).isGreaterThanOrEqualTo(effectiveTime.toEpochMilli());
+      assertThat(testSequencer.getExpiration()).isGreaterThanOrEqualTo(effectiveTime.toEpochMilli());
     }
 
     @Test
@@ -209,13 +209,13 @@ public class ServerTests {
       Sequencer sequencer = acquireTestLockSequencer();
       LockResponse lockResponse = acquireLock(sequencer);
 
-      Assertions.assertThat(lockResponse).hasNoNullFieldsOrProperties()
+      assertThat(lockResponse).hasNoNullFieldsOrProperties()
           .hasFieldOrPropertyWithValue("success", true);
-      Assertions.assertThat(lockResponse.getUpdatedSequencer())
+      assertThat(lockResponse.getUpdatedSequencer())
           .hasFieldOrPropertyWithValue("lockName", sequencer.getLockName())
           .hasFieldOrPropertyWithValue("sequenceNumber", sequencer.getSequenceNumber());
-      Assertions.assertThat(lockResponse.getUpdatedSequencer().getKey()).isNotEqualTo(sequencer.getKey());
-      Assertions.assertThat(lockResponse.getUpdatedSequencer().getExpiration()).isGreaterThanOrEqualTo(
+      assertThat(lockResponse.getUpdatedSequencer().getKey()).isNotEqualTo(sequencer.getKey());
+      assertThat(lockResponse.getUpdatedSequencer().getExpiration()).isGreaterThanOrEqualTo(
           sequencer.getExpiration());
     }
 
@@ -228,9 +228,9 @@ public class ServerTests {
 
       LockResponse failureResponse = acquireLock(secondSequencer);
 
-      Assertions.assertThat(failureResponse).hasNoNullFieldsOrProperties()
+      assertThat(failureResponse).hasNoNullFieldsOrProperties()
           .hasFieldOrPropertyWithValue("success", false);
-      Assertions.assertThat(failureResponse.getUpdatedSequencer()).isUpdatedFrom(secondSequencer);
+      assertThat(failureResponse.getUpdatedSequencer()).isUpdatedFrom(secondSequencer);
     }
 
     @Test
@@ -266,7 +266,7 @@ public class ServerTests {
       Sequencer testLockSequencer = acquireTestLockSequencer();
       Sequencer keepAliveSequencer = keepAliveSequencer(testLockSequencer);
 
-      Assertions.assertThat(keepAliveSequencer).isUpdatedFrom(testLockSequencer);
+      assertThat(keepAliveSequencer).isUpdatedFrom(testLockSequencer);
     }
 
     @Test
@@ -306,8 +306,8 @@ public class ServerTests {
       Sequencer lockSequencer = Response.getUpdatedSequencer();
       ReleaseResponse releaseResponse = releaseLock(lockSequencer);
 
-      Assertions.assertThat(lockSequencer).isUpdatedFrom(sequencer);
-      Assertions.assertThat(releaseResponse)
+      assertThat(lockSequencer).isUpdatedFrom(sequencer);
+      assertThat(releaseResponse)
           .hasFieldOrPropertyWithValue("success", true);
     }
 
@@ -320,9 +320,9 @@ public class ServerTests {
       acquireLock(lockSequencer);
       ReleaseResponse releaseResponse = releaseLock(badUnlockSequencer);
 
-      Assertions.assertThat(releaseResponse).hasNoNullFieldsOrProperties()
+      assertThat(releaseResponse).hasNoNullFieldsOrProperties()
           .hasFieldOrPropertyWithValue("success", false);
-      Assertions.assertThat(releaseResponse.getUpdatedSequencer()).isUpdatedFrom(badUnlockSequencer);
+      assertThat(releaseResponse.getUpdatedSequencer()).isUpdatedFrom(badUnlockSequencer);
     }
 
     @Test
@@ -356,7 +356,7 @@ public class ServerTests {
     @Test
     public void itShouldIndicateIfNobodyHasTheLock() {
       createTestLock();
-      Assertions.assertThat(whoHasTestLock())
+      assertThat(whoHasTestLock())
           .hasFieldOrPropertyWithValue("locked", false)
           .hasFieldOrPropertyWithValue("sequenceNumber", 0);
     }
@@ -366,7 +366,7 @@ public class ServerTests {
       createTestLock();
       final Sequencer sequencer = acquireTestLockSequencer();
       acquireLock(sequencer);
-      Assertions.assertThat(whoHasTestLock())
+      assertThat(whoHasTestLock())
           .hasNoNullFieldsOrProperties()
           .hasFieldOrPropertyWithValue("locked", true)
           .hasFieldOrPropertyWithValue("sequenceNumber", 0);
@@ -401,7 +401,7 @@ public class ServerTests {
       createTestLock();
       acquireTestLockSequencer();
       acquireTestLockSequencer();
-      Assertions.assertThat(getNextTestLockSequenceNumber())
+      assertThat(getNextTestLockSequenceNumber())
           .hasFieldOrPropertyWithValue("sequenceNumber", 2);
     }
 
@@ -428,7 +428,7 @@ public class ServerTests {
   public class ListLocksTests {
     @Test
     public void itShouldReturnEmptyListForNoLocks() {
-      Assertions.assertThat(listLocks().getLockNamesCount()).isEqualTo(0);
+      assertThat(listLocks().getLockNamesCount()).isEqualTo(0);
     }
 
     // Should display all locks when requested
@@ -438,8 +438,8 @@ public class ServerTests {
       createTestLock();
       createLock(otherLockName);
       final ListResponse list = listLocks();
-      Assertions.assertThat(list.getLockNamesCount()).isEqualTo(2);
-      Assertions.assertThat(list.getLockNamesList()).contains(TEST_LOCK_NAME, otherLockName);
+      assertThat(list.getLockNamesCount()).isEqualTo(2);
+      assertThat(list.getLockNamesList()).contains(TEST_LOCK_NAME, otherLockName);
     }
   }
 
@@ -465,7 +465,7 @@ public class ServerTests {
             .setDestroyKey(destroyKey)
             .build()
     );
-    Assertions.assertThat(destroyLockResponse.isInitialized()).isTrue();
+    assertThat(destroyLockResponse.isInitialized()).isTrue();
   }
 
   private void destroyTestLock(String destroyKey) {

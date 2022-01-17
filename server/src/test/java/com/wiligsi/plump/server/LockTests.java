@@ -1,6 +1,6 @@
 package com.wiligsi.plump.server;
 
-import static com.wiligsi.plump.PlumpOuterClass.*;
+import static com.wiligsi.plump.common.PlumpOuterClass.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static com.wiligsi.plump.server.assertion.PlumpAssertions.assertThat;
@@ -12,7 +12,6 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Optional;
 import java.util.function.Supplier;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -39,7 +38,7 @@ public class LockTests {
 
   @Test
   public void itShouldVerifyStartingState() {
-    Assertions.assertThat(testLock)
+    assertThat(testLock)
         .hasFieldOrPropertyWithValue("state", LockState.UNLOCKED)
         .hasFieldOrPropertyWithValue("headSequencerNumber", Optional.empty());
     assertThat(testLock.getName().getDisplayName()).isEqualTo(TEST_LOCK_NAME);
@@ -52,7 +51,7 @@ public class LockTests {
     assertThatThrownBy(
         () -> testLock.acquire(dud)
     ).isInstanceOf(InvalidSequencerException.class);
-    Assertions.assertThat(testLock).isUnlocked();
+    assertThat(testLock).isUnlocked();
     assertThat(testLock.getHeadSequencerNumber()).isEmpty();
   }
 
@@ -63,7 +62,7 @@ public class LockTests {
     assertThatThrownBy(
         () -> testLock.release(dud)
     ).isInstanceOf(InvalidSequencerException.class);
-    Assertions.assertThat(testLock).isUnlocked();
+    assertThat(testLock).isUnlocked();
     assertThat(testLock.getHeadSequencerNumber()).isEmpty();
   }
 
@@ -72,7 +71,7 @@ public class LockTests {
     final Sequencer sequencer = testLock.createSequencer();
 
     assertThat(testLock.acquire(sequencer)).isTrue();
-    Assertions.assertThat(testLock).isLocked();
+    assertThat(testLock).isLocked();
     assertThat(testLock.getHeadSequencerNumber()).isPresent()
         .contains(sequencer.getSequenceNumber());
   }
@@ -82,7 +81,7 @@ public class LockTests {
     final Sequencer sequencer = testLock.createSequencer();
     testLock.acquire(sequencer);
     assertThat(testLock.acquire(sequencer)).isFalse();
-    Assertions.assertThat(testLock).isLocked();
+    assertThat(testLock).isLocked();
   }
 
   @Test
@@ -91,7 +90,7 @@ public class LockTests {
 
     testLock.acquire(sequencer);
     assertThat(testLock.release(sequencer)).isTrue();
-    Assertions.assertThat(testLock).isUnlocked();
+    assertThat(testLock).isUnlocked();
     assertThat(testLock.getHeadSequencerNumber()).isEmpty();
   }
 
@@ -104,7 +103,7 @@ public class LockTests {
     assertThatThrownBy(
         () -> testLock.acquire(sequencer)
     ).isInstanceOf(InvalidSequencerException.class);
-    Assertions.assertThat(testLock).isUnlocked();
+    assertThat(testLock).isUnlocked();
     assertThat(testLock.getHeadSequencerNumber()).isEmpty();
   }
 
@@ -114,7 +113,7 @@ public class LockTests {
     final Sequencer secondarySequencer = testLock.createSequencer();
 
     assertThat(testLock.acquire(secondarySequencer)).isFalse();
-    Assertions.assertThat(testLock).isUnlocked();
+    assertThat(testLock).isUnlocked();
     assertThat(testLock.getHeadSequencerNumber()).contains(sequencer.getSequenceNumber());
   }
 
@@ -125,7 +124,7 @@ public class LockTests {
 
     testLock.acquire(sequencer);
     assertThat(testLock.release(secondarySequencer)).isFalse();
-    Assertions.assertThat(testLock).isLocked();
+    assertThat(testLock).isLocked();
     assertThat(testLock.getHeadSequencerNumber()).contains(sequencer.getSequenceNumber());
   }
 
@@ -139,7 +138,7 @@ public class LockTests {
     setTestClockAhead(Duration.ofMinutes(2));
 
     assertThat(testLock.release(overdueSequencer)).isFalse();
-    Assertions.assertThat(testLock).isUnlocked();
+    assertThat(testLock).isUnlocked();
     assertThat(testLock.getHeadSequencerNumber()).contains(onTimeSequencer.getSequenceNumber());
   }
 
@@ -154,7 +153,7 @@ public class LockTests {
     setTestClockAhead(Duration.ofMinutes(2));
 
     assertThat(testLock.getHeadSequencerNumber()).contains(onTimeSequencer.getSequenceNumber());
-    Assertions.assertThat(testLock).isUnlocked();
+    assertThat(testLock).isUnlocked();
   }
 
   @Test
@@ -165,7 +164,7 @@ public class LockTests {
     setTestClockAhead(Duration.ofMinutes(2));
 
     assertThat(testLock.getHeadSequencerNumber()).contains(sequencer.getSequenceNumber());
-    Assertions.assertThat(aliveSequencer).isUpdatedFrom(sequencer);
+    assertThat(aliveSequencer).isUpdatedFrom(sequencer);
   }
 
   @Test

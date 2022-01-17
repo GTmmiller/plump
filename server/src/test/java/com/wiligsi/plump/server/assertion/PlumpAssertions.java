@@ -1,6 +1,6 @@
 package com.wiligsi.plump.server.assertion;
 
-import static com.wiligsi.plump.PlumpOuterClass.*;
+import static com.wiligsi.plump.common.PlumpOuterClass.*;
 
 import com.wiligsi.plump.server.Lock;
 import io.grpc.StatusRuntimeException;

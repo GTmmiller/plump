@@ -1,6 +1,5 @@
 package com.wiligsi.plump.server;
 
-import client.PlumpClient;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import java.io.IOException;
@@ -33,17 +32,17 @@ public class Main {
         server.start();
         server.blockUntilShutdown();
         break;
-      case "client":
-        ManagedChannel channel = ManagedChannelBuilder.forTarget("localhost:50051")
-            .usePlaintext()
-            .build();
-        try {
-          PlumpClient client = new PlumpClient(channel);
-          client.createLock("NuLock");
-        } finally {
-          channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
-        }
-        break;
+//      case "client":
+//        ManagedChannel channel = ManagedChannelBuilder.forTarget("localhost:50051")
+//            .usePlaintext()
+//            .build();
+//        try {
+//          PlumpClient client = new PlumpClient(channel);
+//          client.createLock("NuLock");
+//        } finally {
+//          channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
+//        }
+//        break;
       default:
         System.out.printf("Unknown argument %s. Expected 'server' or 'client'%n", commandArg);
         System.exit(-3);

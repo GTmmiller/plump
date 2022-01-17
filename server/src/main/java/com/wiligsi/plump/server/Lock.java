@@ -1,6 +1,6 @@
 package com.wiligsi.plump.server;
 
-import static com.wiligsi.plump.PlumpOuterClass.*;
+import static com.wiligsi.plump.common.PlumpOuterClass.*;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

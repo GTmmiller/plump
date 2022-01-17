@@ -1,8 +1,8 @@
 package com.wiligsi.plump.server;
 
-import static com.wiligsi.plump.PlumpOuterClass.*;
+import static com.wiligsi.plump.common.PlumpOuterClass.*;
 
-import com.wiligsi.plump.PlumpGrpc;
+import com.wiligsi.plump.common.PlumpGrpc;
 import io.grpc.Status;
 import io.grpc.StatusException;
 import io.grpc.stub.StreamObserver;

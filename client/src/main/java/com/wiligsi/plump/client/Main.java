@@ -1,6 +1,5 @@
 package com.wiligsi.plump.client;
 
-import com.wiligsi.plump.server.PlumpServer;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import java.io.IOException;
@@ -21,18 +20,6 @@ public class Main {
     final String commandArg = args[0].trim().toLowerCase(Locale.ROOT);
 
     switch (commandArg) {
-      case "server":
-        final PlumpServer server;
-        if (args.length >= 2) {
-          final int portArg = Integer.parseInt(args[1]);
-          server = new PlumpServer(portArg);
-        } else {
-          server = new PlumpServer();
-        }
-
-        server.start();
-        server.blockUntilShutdown();
-        break;
       case "com/wiligsi/plump/client":
         ManagedChannel channel = ManagedChannelBuilder.forTarget("localhost:50051")
             .usePlaintext()

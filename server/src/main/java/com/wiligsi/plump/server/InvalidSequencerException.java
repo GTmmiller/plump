@@ -1,4 +1,4 @@
-package com.wiligsi.plump.common;
+package com.wiligsi.plump.server;
 
 public class InvalidSequencerException extends Exception {
 

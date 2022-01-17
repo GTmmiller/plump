@@ -1,4 +1,4 @@
-package com.wiligsi.plump.common;
+package com.wiligsi.plump.server;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

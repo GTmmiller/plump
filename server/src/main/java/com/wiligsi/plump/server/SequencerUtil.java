@@ -1,4 +1,4 @@
-package com.wiligsi.plump.common;
+package com.wiligsi.plump.server;
 
 import static com.wiligsi.plump.common.PlumpOuterClass.Sequencer;
 
