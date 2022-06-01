@@ -13,6 +13,7 @@
         <module>common</module>
         <module>server</module>
         <module>client</module>
+        <module>cli</module>
     </modules>
 
     <properties>
@@ -27,6 +28,7 @@
         <tomcat.version>6.0.53</tomcat.version>
         <assertj.version>3.20.2</assertj.version>
         <checkstyle.version>9.1</checkstyle.version>
+        <picocli.version>4.6.3</picocli.version>
 
         <!-- Plugin versions -->
         <os_plugin.version>1.6.2</os_plugin.version>
@@ -64,6 +66,16 @@
                 <groupId>com.google.protobuf</groupId>
                 <artifactId>protobuf-java-util</artifactId>
                 <version>${protobuf.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>info.picocli</groupId>
+                <artifactId>picocli</artifactId>
+                <version>${picocli.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>info.picocli</groupId>
+                <artifactId>picocli-codegen</artifactId>
+                <version>${picocli.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.tomcat</groupId>

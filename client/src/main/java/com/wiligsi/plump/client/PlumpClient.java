@@ -5,6 +5,7 @@ import static com.wiligsi.plump.common.PlumpOuterClass.*;
 import com.wiligsi.plump.common.PlumpGrpc;
 import io.grpc.Channel;
 import io.grpc.StatusRuntimeException;
+import java.util.Optional;
 import java.util.logging.Logger;
 
 public class PlumpClient {
@@ -17,31 +18,21 @@ public class PlumpClient {
     plumpBlockingStub = PlumpGrpc.newBlockingStub(channel);
   }
 
-  public void createLock(String name) {
+  public CreateLockResponse createLock(String name) throws StatusRuntimeException {
     LOG.info("Creating lock with name: " + name);
     CreateLockRequest request = CreateLockRequest.newBuilder().setLockName(name).build();
-    CreateLockResponse response;
-
-    try {
-      response = plumpBlockingStub.createLock(request);
-    } catch (StatusRuntimeException exception) {
-      LOG.warning("RPC failed with status: " + exception.getStatus());
-      return;
-    }
+    CreateLockResponse response = plumpBlockingStub.createLock(request);
     LOG.info(String.format("Created new lock with name: %s", name));
+    return response;
   }
 
-  public void deleteLock(String name) {
-    LOG.info("Deleting lock with name: " + name);
-    DestroyLockRequest request = DestroyLockRequest.newBuilder().setLockName(name).build();
-    DestroyLockResponse response;
-
-    try {
-      response = plumpBlockingStub.destroyLock(request);
-    } catch (StatusRuntimeException exception) {
-      LOG.warning("RPC failed with status: " + exception.getStatus());
-      return;
-    }
-    LOG.info(String.format("Deleted lock with name: %s", name));
+  public void destroyLock(String name, String destroyKey) throws StatusRuntimeException {
+    LOG.info("Destroying lock with name: " + name);
+    DestroyLockRequest request = DestroyLockRequest.newBuilder()
+        .setLockName(name)
+        .setDestroyKey(destroyKey)
+        .build();
+    plumpBlockingStub.destroyLock(request);
+    LOG.info(String.format("Destroyed lock with name: %s", name));
   }
 }

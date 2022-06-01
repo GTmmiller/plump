@@ -1,6 +1,24 @@
 package com.wiligsi.plump.server;
 
-import static com.wiligsi.plump.common.PlumpOuterClass.*;
+import static com.wiligsi.plump.common.PlumpOuterClass.CreateLockRequest;
+import static com.wiligsi.plump.common.PlumpOuterClass.CreateLockResponse;
+import static com.wiligsi.plump.common.PlumpOuterClass.DestroyLockRequest;
+import static com.wiligsi.plump.common.PlumpOuterClass.DestroyLockResponse;
+import static com.wiligsi.plump.common.PlumpOuterClass.KeepAliveRequest;
+import static com.wiligsi.plump.common.PlumpOuterClass.KeepAliveResponse;
+import static com.wiligsi.plump.common.PlumpOuterClass.ListRequest;
+import static com.wiligsi.plump.common.PlumpOuterClass.ListResponse;
+import static com.wiligsi.plump.common.PlumpOuterClass.LockRequest;
+import static com.wiligsi.plump.common.PlumpOuterClass.LockResponse;
+import static com.wiligsi.plump.common.PlumpOuterClass.NextSequencerRequest;
+import static com.wiligsi.plump.common.PlumpOuterClass.NextSequencerResponse;
+import static com.wiligsi.plump.common.PlumpOuterClass.ReleaseRequest;
+import static com.wiligsi.plump.common.PlumpOuterClass.ReleaseResponse;
+import static com.wiligsi.plump.common.PlumpOuterClass.Sequencer;
+import static com.wiligsi.plump.common.PlumpOuterClass.SequencerRequest;
+import static com.wiligsi.plump.common.PlumpOuterClass.SequencerResponse;
+import static com.wiligsi.plump.common.PlumpOuterClass.WhoHasRequest;
+import static com.wiligsi.plump.common.PlumpOuterClass.WhoHasResponse;
 
 import com.wiligsi.plump.common.PlumpGrpc;
 import io.grpc.Status;
@@ -9,13 +27,25 @@ import io.grpc.stub.StreamObserver;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+/**
+ * This is the implementation of the Plump server itself that inherits from the Grpc stub
+ * interface.
+ *
+ * <p>
+ * The idea here is to have a map of Locks that are created, destroyed, and acted upon by the
+ * server. Most of the complicated logic behind Sequencers is managed by the Lock class itself.
+ * ConcurrentMap classes are used to make multi-threaded logic easier to reason about.
+ * </p>
+ *
+ * @author Steven Miller
+ */
 public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
   private static final Logger LOG = Logger.getLogger(PlumpImpl.class.getName());
@@ -25,6 +55,11 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
   final SecureRandom secureRandom;
   final MessageDigest digest;
 
+  /**
+   * Create a new PlumpImpl instance.
+   *
+   * @throws NoSuchAlgorithmException if the DEFAULT_DIGEST_ALGORITHM isn't available
+   */
   public PlumpImpl() throws NoSuchAlgorithmException {
     super();
     locks = new ConcurrentHashMap<>();
@@ -33,6 +68,12 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     digest = MessageDigest.getInstance(DEFAULT_DIGEST_ALGORITHM);
   }
 
+  /**
+   * Creates a new Lock given a string name. It will return errors if the lock name is invalid.
+   *
+   * @param request          - the request to create a new lock. Contains a single string name
+   * @param responseObserver - the response stream used to send the response
+   */
   @Override
   public void createLock(CreateLockRequest request,
       StreamObserver<CreateLockResponse> responseObserver) {
@@ -61,6 +102,14 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
   }
 
+  /**
+   * Destroys a lock given a name and a 'destroy' token. Succeeds if the token and the lock name are
+   * valid and correspond to each other.
+   *
+   * @param request          - the request to destroy the lock containing the token and the lock
+   *                         name
+   * @param responseObserver - the response stream used to respond to the client
+   */
   @Override
   public void destroyLock(DestroyLockRequest request,
       StreamObserver<DestroyLockResponse> responseObserver) {
@@ -78,6 +127,12 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
   }
 
+  /**
+   * Acquires a sequencer from a given lock.
+   *
+   * @param request          - the request to acquire a sequencer that contains the lock name
+   * @param responseObserver - the response stream used to respond to the client
+   */
   @Override
   public void acquireSequencer(SequencerRequest request,
       StreamObserver<SequencerResponse> responseObserver) {
@@ -97,6 +152,13 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
   }
 
+  /**
+   * Attempt to acquire a lock using a sequencer. Can be successful or unsuccessful depending on the
+   * outcome of the lock attempt.
+   *
+   * @param request          - a locking request containing a Sequencer
+   * @param responseObserver - the response stream used to respond to the client
+   */
   @Override
   public void acquireLock(LockRequest request, StreamObserver<LockResponse> responseObserver) {
     try {
@@ -125,6 +187,12 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
   }
 
+  /**
+   * Renew a passed in Sequencer to extend its expiration time.
+   *
+   * @param request          - the sequencer that should be extended
+   * @param responseObserver - the response stream used to respond to the client
+   */
   @Override
   public void keepAlive(KeepAliveRequest request,
       StreamObserver<KeepAliveResponse> responseObserver) {
@@ -152,6 +220,12 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
   }
 
+  /**
+   * Attempt to release a Lock given a Sequencer.
+   *
+   * @param request          - a request to release a Lock containing a sequencer
+   * @param responseObserver - the response stream used to respond to the client
+   */
   @Override
   public void releaseLock(ReleaseRequest request,
       StreamObserver<ReleaseResponse> responseObserver) {
@@ -187,6 +261,13 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
   }
 
+  /**
+   * Request the status of a Lock including the LockStatus and the sequence number of the Sequencer
+   * that has acquired the lock.
+   *
+   * @param request          - a request for the lock's status
+   * @param responseObserver - the response stream used to respond to the client
+   */
   @Override
   public void whoHasLock(WhoHasRequest request, StreamObserver<WhoHasResponse> responseObserver) {
     try {
@@ -214,7 +295,12 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
   }
 
-
+  /**
+   * Request what the next sequence number will be for a given Lock.
+   *
+   * @param request          - a request including the lock to query
+   * @param responseObserver - the response stream used to respond to the client
+   */
   @Override
   public void nextSequencer(NextSequencerRequest request,
       StreamObserver<NextSequencerResponse> responseObserver) {
@@ -235,12 +321,18 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     }
   }
 
+  /**
+   * Get an alphabetical list of locks that are stored on the server.
+   *
+   * @param request          - a list lock request
+   * @param responseObserver - the response stream used to respond to the client
+   */
   @Override
   public void listLocks(ListRequest request, StreamObserver<ListResponse> responseObserver) {
-    // TODO: it would be easy to order since we're using stream operators already
-    final Set<String> lockNames = locks.keySet().stream()
+    final List<String> lockNames = locks.keySet().stream()
         .map(LockName::getDisplayName)
-        .collect(Collectors.toUnmodifiableSet());
+        .sorted()
+        .collect(Collectors.toUnmodifiableList());
 
     final ListResponse response = ListResponse.newBuilder()
         .addAllLockNames(lockNames)
