@@ -1,0 +1,19 @@
+syntax = "proto3";
+package plump.cli;
+
+option java_package = "com.wiligsi.plump.cli";
+
+import "plump.proto";
+
+message CliStateData {
+
+  message HostStateData {
+    string url = 1;
+    map<string, string> lockDeleteTokens = 2;
+    map<string, Sequencer> lockSequencers = 3;
+  }
+
+  map<string, HostStateData> hostData = 1;
+
+}
+

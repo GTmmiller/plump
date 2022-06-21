@@ -5,6 +5,7 @@ import static com.wiligsi.plump.common.PlumpOuterClass.*;
 import com.wiligsi.plump.common.PlumpGrpc;
 import io.grpc.Channel;
 import io.grpc.StatusRuntimeException;
+import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 
@@ -18,12 +19,12 @@ public class PlumpClient {
     plumpBlockingStub = PlumpGrpc.newBlockingStub(channel);
   }
 
-  public CreateLockResponse createLock(String name) throws StatusRuntimeException {
+  public String createLock(String name) throws StatusRuntimeException {
     LOG.info("Creating lock with name: " + name);
     CreateLockRequest request = CreateLockRequest.newBuilder().setLockName(name).build();
     CreateLockResponse response = plumpBlockingStub.createLock(request);
     LOG.info(String.format("Created new lock with name: %s", name));
-    return response;
+    return response.getDestroyKey();
   }
 
   public void destroyLock(String name, String destroyKey) throws StatusRuntimeException {
@@ -34,5 +35,10 @@ public class PlumpClient {
         .build();
     plumpBlockingStub.destroyLock(request);
     LOG.info(String.format("Destroyed lock with name: %s", name));
+  }
+
+  public List<String> listLocks() {
+    ListRequest request = ListRequest.newBuilder().build();
+    return plumpBlockingStub.listLocks(request).getLockNamesList();
   }
 }
