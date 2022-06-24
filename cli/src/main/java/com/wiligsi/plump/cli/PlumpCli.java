@@ -3,6 +3,7 @@ package com.wiligsi.plump.cli;
 import com.wiligsi.plump.client.PlumpClient;
 import com.wiligsi.plump.common.PlumpOuterClass.CreateLockResponse;
 import com.wiligsi.plump.common.PlumpOuterClass.DestroyLockResponse;
+import com.wiligsi.plump.common.PlumpOuterClass.Sequencer;
 import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -103,6 +104,21 @@ public class PlumpCli {
   @Command(name = "list", description = "List the locks on the server")
   void listLocks() {
     client.listLocks().forEach(System.out::println);
+  }
+
+  @Command(name = "acquire", description = "Acquire a sequencer from a lock")
+  void acquireSequencer(
+      @Parameters(index = "0", paramLabel = "<lockName>", description = "Name of the locks to acquire a sequencer from")
+      String lockName
+  ) throws IOException {
+    Sequencer sequencer = client.acquireSequencer(lockName);
+    state.setLockSequencer(serverUrl, lockName, sequencer);
+    System.out.printf(
+        "Acquired sequencer %s for lock %s",
+        sequencer.getSequenceNumber(),
+        sequencer.getLockName());
+
+    saveStateToFile();
   }
 
   public void shutdownChannel() throws InterruptedException {

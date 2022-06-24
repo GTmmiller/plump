@@ -41,4 +41,11 @@ public class PlumpClient {
     ListRequest request = ListRequest.newBuilder().build();
     return plumpBlockingStub.listLocks(request).getLockNamesList();
   }
+
+  public Sequencer acquireSequencer(String lockName) {
+    SequencerRequest request = SequencerRequest.newBuilder()
+        .setLockName(lockName)
+        .build();
+    return plumpBlockingStub.acquireSequencer(request).getSequencer();
+  }
 }
