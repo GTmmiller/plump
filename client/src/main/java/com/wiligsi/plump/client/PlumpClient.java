@@ -48,4 +48,12 @@ public class PlumpClient {
         .build();
     return plumpBlockingStub.acquireSequencer(request).getSequencer();
   }
+
+  public LockResponse acquireLock(Sequencer lockSequencer) {
+    return plumpBlockingStub.acquireLock(
+        LockRequest.newBuilder()
+            .setSequencer(lockSequencer)
+            .build()
+    );
+  }
 }

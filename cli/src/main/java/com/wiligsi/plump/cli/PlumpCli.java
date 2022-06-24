@@ -1,20 +1,16 @@
 package com.wiligsi.plump.cli;
 
 import com.wiligsi.plump.client.PlumpClient;
-import com.wiligsi.plump.common.PlumpOuterClass.CreateLockResponse;
-import com.wiligsi.plump.common.PlumpOuterClass.DestroyLockResponse;
+import com.wiligsi.plump.common.PlumpOuterClass.LockResponse;
 import com.wiligsi.plump.common.PlumpOuterClass.Sequencer;
-import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Optional;
-import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -114,11 +110,74 @@ public class PlumpCli {
     Sequencer sequencer = client.acquireSequencer(lockName);
     state.setLockSequencer(serverUrl, lockName, sequencer);
     System.out.printf(
-        "Acquired sequencer %s for lock %s",
+        "Acquired sequencer %s for lock %s%n",
         sequencer.getSequenceNumber(),
         sequencer.getLockName());
 
     saveStateToFile();
+  }
+
+  @Command(name = "lock", description = "Acquire a lock using a sequencer")
+  int acquireLock(
+      @Parameters(index = "0", paramLabel = "<lockName>", description = "Name of the locks to acquire a sequencer from")
+          String lockName,
+      @Option(names = {"-m", "--manual"}, description = "Add this flag to manually enter a sequencer")
+          boolean manual,
+      @Option(names = {"-s", "--sequencer-number"}, description = "The sequence number of the sequencer")
+          int sequenceNumber,
+      @Option(names = {"-k", "--key"}, description = "The delete key for the sequencer")
+          String key,
+      @Option(names = {"-e", "--expiration"}, description = "The expiration timestamp for the sequencer")
+          long expiration
+  ) throws IOException {
+    final Sequencer lockSequencer;
+
+    if (manual) {
+      lockSequencer = Sequencer.newBuilder()
+          .setLockName(lockName)
+          .setSequenceNumber(sequenceNumber)
+          .setKey(key)
+          .setExpiration(expiration)
+          .build();
+    } else {
+      Optional<Sequencer> stateSequencer = state.getLockSequencer(serverUrl, lockName);
+
+      if (stateSequencer.isPresent()) {
+        lockSequencer = stateSequencer.get();
+      } else {
+        System.err.printf("No sequencer recorded for lock '%s' on server at '%s'%n",
+            lockName, serverUrl);
+        System.err.println("Try using the -m option to manually insert sequencer details");
+        return -11;
+      }
+    }
+
+    System.out.printf(
+        "Attempting to acquire lock '%s' on server at '%s' with the following sequencer:%n '%s'%n",
+        lockName, serverUrl, lockSequencer
+    );
+
+    LockResponse lockResponse = client.acquireLock(lockSequencer);
+
+    // Success report
+    System.out.printf(
+        "Lock '%s' on server at '%s' ",
+        lockName, serverUrl
+    );
+    if (lockResponse.getSuccess()) {
+      System.out.println("was successfully acquired!");
+    } else {
+      System.out.println("is locked by another user.");
+    }
+
+    // Sequencer update from keepalive
+    if (manual) {
+      System.out.printf("Your sequencer was renewed, here is your new sequencer:%n %s%n", lockResponse.getUpdatedSequencer());
+    } else {
+      state.setLockSequencer(serverUrl, lockName, lockResponse.getUpdatedSequencer());
+      saveStateToFile();
+    }
+    return 0;
   }
 
   public void shutdownChannel() throws InterruptedException {
