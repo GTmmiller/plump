@@ -1,6 +1,7 @@
 package com.wiligsi.plump.cli;
 
 import com.wiligsi.plump.client.PlumpClient;
+import com.wiligsi.plump.common.PlumpOuterClass.KeepAliveResponse;
 import com.wiligsi.plump.common.PlumpOuterClass.LockResponse;
 import com.wiligsi.plump.common.PlumpOuterClass.ReleaseResponse;
 import com.wiligsi.plump.common.PlumpOuterClass.Sequencer;
@@ -11,6 +12,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import picocli.CommandLine;
@@ -192,6 +195,43 @@ public class PlumpCli {
     }
 
     return 0;
+  }
+
+  @Command(name = "keepAlive", description = "Keeps a sequencer alive. Works for sequencers that have locked a lock and regular sequencers." )
+  int keepAlive(
+      @Mixin SequencerOptions options
+  ) throws IOException {
+    final Optional<Sequencer> commandSequencer = getCommandSequencer(options);
+
+    if (commandSequencer.isEmpty()) {
+      return -11;
+    }
+
+    final Sequencer sequencer = commandSequencer.get();
+
+    final KeepAliveResponse response = client.keepAlive(sequencer);
+    final Duration keepAliveInterval = Duration.ofMillis(response.getKeepAliveInterval());
+
+    renewSequencer(options, response.getUpdatedSequencer());
+
+    System.out.println("Sequencer renewed successfully!");
+    System.out.printf(
+        "Current server keep alive interval is %s seconds",
+        keepAliveInterval.toSeconds()
+    );
+    return 0;
+  }
+
+  @Command(name = "next", description = "Get the sequence number that will be given to the next acquirer")
+  void getNextSequencer(
+      @Parameters(index = "0", paramLabel = "<lockName>", description = "Name of the lock to inspect")
+          String lockName
+  ) {
+    final int nextSequencer = client.getNextSequencer(lockName);
+    System.out.printf(
+        "The next sequencer for lock '%s' on server '%s' will be: '%d'%n",
+        lockName, serverUrl, nextSequencer
+    );
   }
 
   public void shutdownChannel() throws InterruptedException {

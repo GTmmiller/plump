@@ -6,7 +6,6 @@ import com.wiligsi.plump.common.PlumpGrpc;
 import io.grpc.Channel;
 import io.grpc.StatusRuntimeException;
 import java.util.List;
-import java.util.Optional;
 import java.util.logging.Logger;
 
 public class PlumpClient {
@@ -64,4 +63,29 @@ public class PlumpClient {
             .build()
     );
   }
+
+  public KeepAliveResponse keepAlive(Sequencer sequencer) {
+    return plumpBlockingStub.keepAlive(
+        KeepAliveRequest.newBuilder()
+            .setSequencer(sequencer)
+            .build()
+    );
+  }
+
+  public int getNextSequencer(String lockName) {
+    return plumpBlockingStub.nextSequencer(
+        NextSequencerRequest.newBuilder()
+            .setLockName(lockName)
+            .build()
+    ).getSequenceNumber();
+  }
+
+  public int whoHasLock(String lockName) {
+    return plumpBlockingStub.whoHasLock(
+        WhoHasRequest.newBuilder()
+            .setLockName(lockName)
+            .build()
+    ).getSequenceNumber();
+  }
+
 }
