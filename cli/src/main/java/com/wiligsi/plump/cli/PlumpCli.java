@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.HelpCommand;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
@@ -119,34 +120,21 @@ public class PlumpCli {
 
   @Command(name = "lock", description = "Acquire a lock using a sequencer")
   int acquireLock(
-      @Parameters(index = "0", paramLabel = "<lockName>", description = "Name of the locks to acquire a sequencer from")
-          String lockName,
-      @Option(names = {"-m", "--manual"}, description = "Add this flag to manually enter a sequencer")
-          boolean manual,
-      @Option(names = {"-s", "--sequencer-number"}, description = "The sequence number of the sequencer")
-          int sequenceNumber,
-      @Option(names = {"-k", "--key"}, description = "The delete key for the sequencer")
-          String key,
-      @Option(names = {"-e", "--expiration"}, description = "The expiration timestamp for the sequencer")
-          long expiration
+      @Mixin SequencerOptions options
   ) throws IOException {
     final Sequencer lockSequencer;
 
-    if (manual) {
-      lockSequencer = Sequencer.newBuilder()
-          .setLockName(lockName)
-          .setSequenceNumber(sequenceNumber)
-          .setKey(key)
-          .setExpiration(expiration)
-          .build();
+    final Optional<Sequencer> manualSequencer = options.createManualSequencer();
+    if(manualSequencer.isPresent()) {
+      lockSequencer = manualSequencer.get();
     } else {
-      Optional<Sequencer> stateSequencer = state.getLockSequencer(serverUrl, lockName);
+      Optional<Sequencer> stateSequencer = state.getLockSequencer(serverUrl, options.lockName);
 
       if (stateSequencer.isPresent()) {
         lockSequencer = stateSequencer.get();
       } else {
         System.err.printf("No sequencer recorded for lock '%s' on server at '%s'%n",
-            lockName, serverUrl);
+            options.lockName, serverUrl);
         System.err.println("Try using the -m option to manually insert sequencer details");
         return -11;
       }
@@ -154,7 +142,7 @@ public class PlumpCli {
 
     System.out.printf(
         "Attempting to acquire lock '%s' on server at '%s' with the following sequencer:%n '%s'%n",
-        lockName, serverUrl, lockSequencer
+        options.lockName, serverUrl, lockSequencer
     );
 
     LockResponse lockResponse = client.acquireLock(lockSequencer);
@@ -162,7 +150,7 @@ public class PlumpCli {
     // Success report
     System.out.printf(
         "Lock '%s' on server at '%s' ",
-        lockName, serverUrl
+        options.lockName, serverUrl
     );
     if (lockResponse.getSuccess()) {
       System.out.println("was successfully acquired!");
@@ -171,10 +159,10 @@ public class PlumpCli {
     }
 
     // Sequencer update from keepalive
-    if (manual) {
+    if (options.manual) {
       System.out.printf("Your sequencer was renewed, here is your new sequencer:%n %s%n", lockResponse.getUpdatedSequencer());
     } else {
-      state.setLockSequencer(serverUrl, lockName, lockResponse.getUpdatedSequencer());
+      state.setLockSequencer(serverUrl, options.lockName, lockResponse.getUpdatedSequencer());
       saveStateToFile();
     }
     return 0;
@@ -189,7 +177,6 @@ public class PlumpCli {
       state.writeTo(stateOutputStream);
     }
   }
-
 
   public static void main(String[] args) throws InterruptedException, IOException {
     Optional<PlumpCli> cli = Optional.empty();

@@ -56,4 +56,12 @@ public class PlumpClient {
             .build()
     );
   }
+
+  public ReleaseResponse releaseLock(Sequencer unlockSequencer) {
+    return plumpBlockingStub.releaseLock(
+        ReleaseRequest.newBuilder()
+            .setSequencer(unlockSequencer)
+            .build()
+    );
+  }
 }
