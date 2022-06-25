@@ -2,6 +2,7 @@ package com.wiligsi.plump.cli;
 
 import com.wiligsi.plump.client.PlumpClient;
 import com.wiligsi.plump.common.PlumpOuterClass.LockResponse;
+import com.wiligsi.plump.common.PlumpOuterClass.ReleaseResponse;
 import com.wiligsi.plump.common.PlumpOuterClass.Sequencer;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -122,23 +123,13 @@ public class PlumpCli {
   int acquireLock(
       @Mixin SequencerOptions options
   ) throws IOException {
-    final Sequencer lockSequencer;
 
-    final Optional<Sequencer> manualSequencer = options.createManualSequencer();
-    if(manualSequencer.isPresent()) {
-      lockSequencer = manualSequencer.get();
-    } else {
-      Optional<Sequencer> stateSequencer = state.getLockSequencer(serverUrl, options.lockName);
-
-      if (stateSequencer.isPresent()) {
-        lockSequencer = stateSequencer.get();
-      } else {
-        System.err.printf("No sequencer recorded for lock '%s' on server at '%s'%n",
-            options.lockName, serverUrl);
-        System.err.println("Try using the -m option to manually insert sequencer details");
-        return -11;
-      }
+    final Optional<Sequencer> commandSequencer = getCommandSequencer(options);
+    if (commandSequencer.isEmpty()) {
+      return -11;
     }
+
+    final Sequencer lockSequencer = commandSequencer.get();
 
     System.out.printf(
         "Attempting to acquire lock '%s' on server at '%s' with the following sequencer:%n '%s'%n",
@@ -159,17 +150,80 @@ public class PlumpCli {
     }
 
     // Sequencer update from keepalive
-    if (options.manual) {
-      System.out.printf("Your sequencer was renewed, here is your new sequencer:%n %s%n", lockResponse.getUpdatedSequencer());
-    } else {
-      state.setLockSequencer(serverUrl, options.lockName, lockResponse.getUpdatedSequencer());
-      saveStateToFile();
+    renewSequencer(options, lockResponse.getUpdatedSequencer());
+    return 0;
+  }
+
+  @Command(name = "unlock", description = "Release a lock using a sequencer")
+  int releaseLock(
+      @Mixin SequencerOptions options
+  ) throws IOException {
+
+    final Optional<Sequencer> commandSequencer = getCommandSequencer(options);
+    if (commandSequencer.isEmpty()) {
+      return -11;
     }
+
+    final Sequencer unlockSequencer = commandSequencer.get();
+
+    System.out.printf(
+        "Attempting to release lock '%s' on server at '%s' with the following sequencer:%n '%s'%n",
+        options.lockName, serverUrl, unlockSequencer
+    );
+
+    ReleaseResponse unlockResponse = client.releaseLock(unlockSequencer);
+
+    // Success report
+    System.out.printf(
+        "Lock '%s' on server at '%s' ",
+        options.lockName, serverUrl
+    );
+    if (unlockResponse.getSuccess()) {
+      System.out.println("was successfully released!");
+      if (!options.manual) {
+        // Remove spent sequencer
+        state.removeLockSequencer(serverUrl, options.lockName);
+        saveStateToFile();
+      }
+    } else {
+      System.out.println("is locked by another user.");
+      // Sequencer update from keepalive
+      renewSequencer(options, unlockResponse.getUpdatedSequencer());
+    }
+
     return 0;
   }
 
   public void shutdownChannel() throws InterruptedException {
     channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
+  }
+
+  private Optional<Sequencer> getCommandSequencer(SequencerOptions options) {
+    final Optional<Sequencer> manualSequencer = options.createManualSequencer();
+
+    if(manualSequencer.isPresent()) {
+      return manualSequencer;
+    } else {
+      Optional<Sequencer> stateSequencer = state.getLockSequencer(serverUrl, options.lockName);
+
+      if (stateSequencer.isEmpty()) {
+        System.err.printf("No sequencer recorded for lock '%s' on server at '%s'%n",
+            options.lockName, serverUrl);
+        System.err.println("Try using the -m option to manually insert sequencer details");
+      }
+
+      return stateSequencer;
+    }
+  }
+
+  private void renewSequencer(SequencerOptions options, Sequencer updatedSequencer)
+      throws IOException {
+    if (options.manual) {
+      System.out.printf("Your sequencer was renewed, here is your new sequencer:%n %s%n", updatedSequencer);
+    } else {
+      state.setLockSequencer(serverUrl, options.lockName, updatedSequencer);
+      saveStateToFile();
+    }
   }
 
   private void saveStateToFile() throws IOException {
