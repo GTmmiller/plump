@@ -234,6 +234,28 @@ public class PlumpCli {
     );
   }
 
+  @Command(name = "whoHas", description = "Get the sequence number of the user who currently acquired the lock")
+  void whoHas(
+      @Parameters(index = "0", paramLabel = "<lockName>", description = "Name of the lock to inspect")
+          String lockName
+  ) {
+    client.whoHasLock(lockName).ifPresentOrElse(
+        (whoHasSequencer) -> {
+          System.out.printf(
+              "Sequence number '%d' has acquired lock '%s' on server '%s'%n",
+              whoHasSequencer, lockName, serverUrl
+          );
+        },
+        () -> {
+          System.out.printf(
+              "Lock '%s' on server '%s' is currently unlocked%n",
+              lockName, serverUrl
+          );
+        }
+    );
+
+  }
+
   public void shutdownChannel() throws InterruptedException {
     channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
   }
