@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class CliStateSingletonTest {
+
   private static final String TEST_URL = "localhost:43566";
   private static final String TEST_LOCK_NAME = "testLock";
   private static final String TEST_DELETE_TOKEN = "delete_token";
@@ -24,7 +25,7 @@ public class CliStateSingletonTest {
   @Test
   public void itShouldReturnEmptyOptionalOnUnsetGets() {
     assertThat(cliState.getDeleteToken(TEST_URL, TEST_LOCK_NAME)).isEmpty();
-    assertThat(cliState.getLockSequencer(TEST_URL,TEST_LOCK_NAME)).isEmpty();
+    assertThat(cliState.getLockSequencer(TEST_URL, TEST_LOCK_NAME)).isEmpty();
   }
 
   @Test

@@ -13,7 +13,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import picocli.CommandLine;
@@ -23,10 +22,23 @@ import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
+
+/**
+ * The Cli for interacting with a Plump server. It creates and uses a serialized instance of
+ * SequencerOptions to keep track of Locks and Sequencers generated with this tool. There are also
+ * options that support manual entry of Sequencers and Lock delete keys.
+ *
+ * <p>
+ * Everything you can do with the client library, you can do with the cli
+ * </p>
+ *
+ * @author Steven Miller
+ */
 @Command(name = "plumpc", version = "plump 1.0",
-description = "provides", subcommands={HelpCommand.class}, subcommandsRepeatable = true,
-synopsisSubcommandLabel = "COMMAND")
+    description = "provides", subcommands = {HelpCommand.class}, subcommandsRepeatable = true,
+    synopsisSubcommandLabel = "COMMAND")
 public class PlumpCli {
+
   private static final String STATE_FILE_NAME = ".plumpc.buf";
 
   private final CliStateSingleton state;
@@ -40,6 +52,11 @@ public class PlumpCli {
   @Option(names = {"-s", "--state-file"}, description = "The state file to create or load from.")
   private Optional<String> stateFileLocation = Optional.empty();
 
+  /**
+   * Create a new instance of the Cli.
+   *
+   * @throws IOException - if there's an issue reading the state file location.
+   */
   public PlumpCli() throws IOException {
     // Read the state file if it exists, otherwise create a new state object
     if (stateFileLocation.isPresent()) {
@@ -48,7 +65,7 @@ public class PlumpCli {
       stateFile = Path.of(System.getProperty("user.home"), STATE_FILE_NAME).toFile();
     }
 
-    if(stateFile.isFile()) {
+    if (stateFile.isFile()) {
       try (FileInputStream dotFileIn = new FileInputStream(stateFile)) {
         state = CliStateSingleton.parseFrom(dotFileIn);
       }
@@ -71,22 +88,23 @@ public class PlumpCli {
 
   @Command(name = "create", description = "Creates a new lock on a Plump server")
   void createLock(
-      @Parameters(index = "0", paramLabel="<lockName>", description="new lock name") String lockName
+      @Parameters(index = "0", paramLabel = "<lockName>", description = "new lock name")
+          String lockName
   ) throws InterruptedException, IOException {
-      String destroyKey = client.createLock(lockName);
-      state.setDeleteToken(serverUrl, lockName, destroyKey);
-       saveStateToFile();
+    String destroyKey = client.createLock(lockName);
+    state.setDeleteToken(serverUrl, lockName, destroyKey);
+    saveStateToFile();
   }
 
   @Command(name = "destroy", description = "Destroy a lock from a Plump server")
   int destroyLock(
-      @Parameters(index = "0", paramLabel="<lockName>", description="lock to delete")
+      @Parameters(index = "0", paramLabel = "<lockName>", description = "lock to delete")
           String lockName,
-      @Option(names={"-t", "--token"}, description="A passed in delete token for the lock")
+      @Option(names = {"-t", "--token"}, description = "A passed in delete token for the lock")
           String paramDeleteToken
   ) {
     final String deleteToken;
-    if(paramDeleteToken != null) {
+    if (paramDeleteToken != null) {
       deleteToken = paramDeleteToken;
     } else {
       Optional<String> stateDeleteToken = state.getDeleteToken(serverUrl, lockName);
@@ -109,8 +127,9 @@ public class PlumpCli {
 
   @Command(name = "acquire", description = "Acquire a sequencer from a lock")
   void acquireSequencer(
-      @Parameters(index = "0", paramLabel = "<lockName>", description = "Name of the locks to acquire a sequencer from")
-      String lockName
+      @Parameters(index = "0", paramLabel = "<lockName>",
+          description = "Name of the locks to acquire a sequencer from")
+          String lockName
   ) throws IOException {
     Sequencer sequencer = client.acquireSequencer(lockName);
     state.setLockSequencer(serverUrl, lockName, sequencer);
@@ -197,7 +216,9 @@ public class PlumpCli {
     return 0;
   }
 
-  @Command(name = "keepAlive", description = "Keeps a sequencer alive. Works for sequencers that have locked a lock and regular sequencers." )
+  @Command(name = "keepAlive",
+      description = "Keeps a sequencer alive. Works for sequencers that "
+          + "have locked a lock and regular sequencers.")
   int keepAlive(
       @Mixin SequencerOptions options
   ) throws IOException {
@@ -222,9 +243,11 @@ public class PlumpCli {
     return 0;
   }
 
-  @Command(name = "next", description = "Get the sequence number that will be given to the next acquirer")
+  @Command(name = "next",
+      description = "Get the sequence number that will be given to the next acquirer")
   void getNextSequencer(
-      @Parameters(index = "0", paramLabel = "<lockName>", description = "Name of the lock to inspect")
+      @Parameters(index = "0", paramLabel = "<lockName>",
+          description = "Name of the lock to inspect")
           String lockName
   ) {
     final int nextSequencer = client.getNextSequencer(lockName);
@@ -234,9 +257,11 @@ public class PlumpCli {
     );
   }
 
-  @Command(name = "whoHas", description = "Get the sequence number of the user who currently acquired the lock")
+  @Command(name = "whoHas",
+      description = "Get the sequence number of the user who currently acquired the lock")
   void whoHas(
-      @Parameters(index = "0", paramLabel = "<lockName>", description = "Name of the lock to inspect")
+      @Parameters(index = "0", paramLabel = "<lockName>",
+          description = "Name of the lock to inspect")
           String lockName
   ) {
     client.whoHasLock(lockName).ifPresentOrElse(
@@ -256,6 +281,12 @@ public class PlumpCli {
 
   }
 
+  /**
+   * Shutdown the channel created for the Cli object.
+   *
+   * @throws InterruptedException - if a system interrupt prevents the shutdown signal from being
+   *                              sent
+   */
   public void shutdownChannel() throws InterruptedException {
     channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
   }
@@ -263,7 +294,7 @@ public class PlumpCli {
   private Optional<Sequencer> getCommandSequencer(SequencerOptions options) {
     final Optional<Sequencer> manualSequencer = options.createManualSequencer();
 
-    if(manualSequencer.isPresent()) {
+    if (manualSequencer.isPresent()) {
       return manualSequencer;
     } else {
       Optional<Sequencer> stateSequencer = state.getLockSequencer(serverUrl, options.lockName);
@@ -281,7 +312,8 @@ public class PlumpCli {
   private void renewSequencer(SequencerOptions options, Sequencer updatedSequencer)
       throws IOException {
     if (options.manual) {
-      System.out.printf("Your sequencer was renewed, here is your new sequencer:%n %s%n", updatedSequencer);
+      System.out.printf("Your sequencer was renewed, here is your new sequencer:%n %s%n",
+          updatedSequencer);
     } else {
       state.setLockSequencer(serverUrl, options.lockName, updatedSequencer);
       saveStateToFile();
@@ -294,6 +326,13 @@ public class PlumpCli {
     }
   }
 
+  /**
+   * Entry point for the Cli. Make sure that the channel gets shutdown before the program closes.
+   *
+   * @param args - passed in command line arguments.
+   * @throws InterruptedException - If interrupted by a keyboard interrupt or other signal.
+   * @throws IOException          - If there's an issue with accessing the state file.
+   */
   public static void main(String[] args) throws InterruptedException, IOException {
     Optional<PlumpCli> cli = Optional.empty();
     int exitCode = -99;

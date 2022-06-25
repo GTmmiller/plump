@@ -4,7 +4,6 @@ import static com.wiligsi.plump.common.PlumpOuterClass.Sequencer;
 
 import com.wiligsi.plump.cli.CliSerialize.CliStateData;
 import com.wiligsi.plump.cli.CliSerialize.CliStateData.HostStateData;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -18,13 +17,14 @@ import java.util.stream.Collectors;
  * This class is a singleton object that represents locally stored state for the cli.
  *
  * <p>
- *   This object tracks the deletion keys and information for sequencers and locks. It serializes to
- *   files via protocol buffer classes.
+ * This object tracks the deletion keys and information for sequencers and locks. It serializes to
+ * files via protocol buffer classes.
  * </p>
  *
  * @author Steven Miller
  */
 public class CliStateSingleton {
+
   private final Map<String, HostState> hostStateMap;
 
   public CliStateSingleton() {
@@ -81,12 +81,12 @@ public class CliStateSingleton {
     return CliStateData.newBuilder()
         .putAllHostData(
             hostStateMap.entrySet()
-            .stream()
-            .collect(
-                Collectors.toUnmodifiableMap(
-                Entry::getKey,
-                e -> e.getValue().toHostStateData()
-            ))
+                .stream()
+                .collect(
+                    Collectors.toUnmodifiableMap(
+                        Entry::getKey,
+                        e -> e.getValue().toHostStateData()
+                    ))
         )
         .build();
   }
@@ -97,6 +97,7 @@ public class CliStateSingleton {
   }
 
   private static class HostState {
+
     private final String url;
     private final Map<String, String> lockDeleteTokens;
     private final Map<String, Sequencer> lockSequencers;
