@@ -2,7 +2,6 @@ package com.wiligsi.plump.server;
 
 import static com.wiligsi.plump.common.PlumpOuterClass.Sequencer;
 
-import java.security.MessageDigest;
 import java.time.Instant;
 
 /**
@@ -55,18 +54,18 @@ public class SequencerUtil {
    * Verify that the request Sequencer is using the same key that is hashed for the local Sequencer.
    * If the two sequencers do not match, then an exception is thrown.
    *
-   * @param request - the request Sequencer to compare
-   * @param local   - the local Sequencer to compare
-   * @param digest  - the digest algorithm used to hash the key for the local Sequencer
+   * @param request         - the request Sequencer to compare
+   * @param local           - the local Sequencer to compare
+   * @param digestAlgorithm - the digest algorithm used to hash the key for the local Sequencer
    * @throws InvalidSequencerException if the sequencers don't match or the request sequencer key
    *                                   hash doesn't match the local key hash
    */
   public static void verifySequencer(
       Sequencer request,
       Sequencer local,
-      MessageDigest digest
+      String digestAlgorithm
   ) throws InvalidSequencerException {
-    final String hashedRequestKey = KeyUtil.hashKey(request.getKey(), digest);
+    final String hashedRequestKey = KeyUtil.hashKey(request.getKey(), digestAlgorithm);
     boolean validSequencer = checkSequencer(request, local)
         && hashedRequestKey.equals(local.getKey())
         && request.getExpiration() == local.getExpiration();

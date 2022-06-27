@@ -1,13 +1,31 @@
 package com.wiligsi.plump.server;
 
 
-import static com.wiligsi.plump.common.PlumpOuterClass.*;
+import static com.wiligsi.plump.common.PlumpOuterClass.CreateLockRequest;
+import static com.wiligsi.plump.common.PlumpOuterClass.CreateLockResponse;
+import static com.wiligsi.plump.common.PlumpOuterClass.DestroyLockRequest;
+import static com.wiligsi.plump.common.PlumpOuterClass.DestroyLockResponse;
+import static com.wiligsi.plump.common.PlumpOuterClass.KeepAliveRequest;
+import static com.wiligsi.plump.common.PlumpOuterClass.ListRequest;
+import static com.wiligsi.plump.common.PlumpOuterClass.ListResponse;
+import static com.wiligsi.plump.common.PlumpOuterClass.LockRequest;
+import static com.wiligsi.plump.common.PlumpOuterClass.LockResponse;
+import static com.wiligsi.plump.common.PlumpOuterClass.NextSequencerRequest;
+import static com.wiligsi.plump.common.PlumpOuterClass.NextSequencerResponse;
+import static com.wiligsi.plump.common.PlumpOuterClass.ReleaseRequest;
+import static com.wiligsi.plump.common.PlumpOuterClass.ReleaseResponse;
+import static com.wiligsi.plump.common.PlumpOuterClass.Sequencer;
+import static com.wiligsi.plump.common.PlumpOuterClass.SequencerRequest;
+import static com.wiligsi.plump.common.PlumpOuterClass.SequencerResponse;
+import static com.wiligsi.plump.common.PlumpOuterClass.WhoHasRequest;
+import static com.wiligsi.plump.common.PlumpOuterClass.WhoHasResponse;
 import static com.wiligsi.plump.server.assertion.PlumpAssertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
-import static org.assertj.core.api.Assertions.assertThat;
 
 import com.wiligsi.plump.common.PlumpGrpc;
+import com.wiligsi.plump.server.concurrency.PlumpWorker;
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.StatusRuntimeException;
@@ -16,8 +34,8 @@ import io.grpc.inprocess.InProcessServerBuilder;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -26,6 +44,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 public class ServerTests {
+
   private static final String TEST_LOCK_NAME = "testLock";
 
   private Server plumpServer;
@@ -69,6 +88,7 @@ public class ServerTests {
 
   @Nested
   public class CreateLockTests {
+
     @Test
     public void itShouldReturnACodeOnLockCreation() {
       final CreateLockResponse response = createTestLock();
@@ -103,6 +123,7 @@ public class ServerTests {
 
   @Nested
   public class DestroyLockTests {
+
     @Test
     public void itShouldNotDestroyANonExistentLock() {
       final String nonExistentName = "fakeLock";
@@ -152,6 +173,7 @@ public class ServerTests {
 
   @Nested
   public class AcquireSequencerTests {
+
     @Test
     public void itShouldNotBeAbleToGetSequencerFromNonExistentLock() {
       final String fakeLockName = "fakeLock";
@@ -181,7 +203,8 @@ public class ServerTests {
           .hasFieldOrPropertyWithValue("lockName", TEST_LOCK_NAME)
           .hasFieldOrPropertyWithValue("sequenceNumber", 0);
 
-      assertThat(testSequencer.getExpiration()).isGreaterThanOrEqualTo(effectiveTime.toEpochMilli());
+      assertThat(testSequencer.getExpiration()).isGreaterThanOrEqualTo(
+          effectiveTime.toEpochMilli());
     }
 
     @Test
@@ -203,6 +226,7 @@ public class ServerTests {
 
   @Nested
   public class AcquireLockTests {
+
     @Test
     public void itShouldLockWhenSequencerIsHead() {
       createTestLock();
@@ -260,6 +284,7 @@ public class ServerTests {
 
   @Nested
   public class KeepAliveTests {
+
     @Test
     public void itShouldKeepAliveSequencer() {
       createTestLock();
@@ -298,6 +323,7 @@ public class ServerTests {
 
   @Nested
   public class ReleaseLockTests {
+
     @Test
     public void itShouldBeAbleToReleaseALock() {
       createTestLock();
@@ -396,6 +422,7 @@ public class ServerTests {
 
   @Nested
   public class GetNextSequenceNumberTests {
+
     @Test
     public void itShouldGetTheNextSequenceNumberFromValidLock() {
       createTestLock();
@@ -426,6 +453,7 @@ public class ServerTests {
 
   @Nested
   public class ListLocksTests {
+
     @Test
     public void itShouldReturnEmptyListForNoLocks() {
       assertThat(listLocks().getLockNamesCount()).isEqualTo(0);
@@ -441,6 +469,34 @@ public class ServerTests {
       assertThat(list.getLockNamesCount()).isEqualTo(2);
       assertThat(list.getLockNamesList()).contains(TEST_LOCK_NAME, otherLockName);
     }
+  }
+
+  @Nested
+  public class ConcurrencyTests {
+
+    @Test
+    public void itShouldEnsureThreadSafety() throws InterruptedException {
+      final int threadCount = 5;
+      // Create initial waiting latch (1)
+      final CountDownLatch startSignal = new CountDownLatch(1);
+      // Create the latch for the threads to conclude with (n) where n is number of threads created
+      final CountDownLatch endSignal = new CountDownLatch(threadCount);
+
+      createTestLock();
+
+      // Create n threads and have them await on latch (1)
+      for (int i = 0; i < threadCount; i++) {
+        new Thread(
+            new PlumpWorker(startSignal, endSignal, plumpBlockingStub, TEST_LOCK_NAME)).start();
+      }
+      startSignal.countDown();
+      // Test ends when n-latch is opened and the values are compared
+      endSignal.await();
+      // Check that the value, which starts at 0 is equal to n. It should not initially
+      assertThat(PlumpWorker.COUNT).hasSize(threadCount);
+
+    }
+
   }
 
   // Helper Methods

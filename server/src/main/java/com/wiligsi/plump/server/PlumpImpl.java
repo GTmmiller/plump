@@ -24,7 +24,6 @@ import com.wiligsi.plump.common.PlumpGrpc;
 import io.grpc.Status;
 import io.grpc.StatusException;
 import io.grpc.stub.StreamObserver;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.List;
@@ -53,7 +52,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
   final ConcurrentMap<LockName, Lock> locks;
   final ConcurrentMap<String, LockName> destroyKeyHashMap;
   final SecureRandom secureRandom;
-  final MessageDigest digest;
+  final String digestAlgorithm;
 
   /**
    * Create a new PlumpImpl instance.
@@ -65,7 +64,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     locks = new ConcurrentHashMap<>();
     destroyKeyHashMap = new ConcurrentHashMap<>();
     secureRandom = SecureRandom.getInstanceStrong();
-    digest = MessageDigest.getInstance(DEFAULT_DIGEST_ALGORITHM);
+    digestAlgorithm = DEFAULT_DIGEST_ALGORITHM;
   }
 
   /**
@@ -90,7 +89,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
       }
 
       final String destroyKey = KeyUtil.generateRandomKey(secureRandom);
-      destroyKeyHashMap.put(KeyUtil.hashKey(destroyKey, digest), newLock.getName());
+      destroyKeyHashMap.put(KeyUtil.hashKey(destroyKey, digestAlgorithm), newLock.getName());
 
       responseObserver.onNext(
           CreateLockResponse.newBuilder()
@@ -181,6 +180,11 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     } catch (StatusException validationException) {
       responseObserver.onError(validationException);
     } catch (InvalidSequencerException sequencerException) {
+      LOG.info("Request sequencer '" + request.getSequencer() + "' invalid sequencer");
+      LOG.info(
+          "Current state for the lock: "
+              + locks.get(new LockName(request.getSequencer().getLockName()))
+      );
       responseObserver.onError(
           asStatusException(Status.INVALID_ARGUMENT, sequencerException)
       );
@@ -371,8 +375,6 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
       return new Lock(lockName);
     } catch (IllegalArgumentException argumentException) {
       throw asStatusException(Status.INVALID_ARGUMENT, argumentException);
-    } catch (NoSuchAlgorithmException algorithmException) {
-      throw asStatusException(Status.INTERNAL, algorithmException);
     }
   }
 
@@ -385,7 +387,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
   }
 
   protected void verifyDestroyKey(String destroyKey, LockName lockName) throws StatusException {
-    final String keyHash = KeyUtil.hashKey(destroyKey, digest);
+    final String keyHash = KeyUtil.hashKey(destroyKey, digestAlgorithm);
     final LockName expectedKeyName = destroyKeyHashMap.get(keyHash);
     if (!lockName.equals(expectedKeyName)) {
       throw Status.INVALID_ARGUMENT

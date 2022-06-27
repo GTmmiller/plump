@@ -2,7 +2,6 @@ package com.wiligsi.plump.server;
 
 import static com.wiligsi.plump.common.PlumpOuterClass.Sequencer;
 
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Clock;
@@ -52,7 +51,7 @@ public class Lock {
   private final SecureRandom secureRandom;
   private final AtomicInteger nextSequenceNumber;
   private final AtomicInteger headSequenceNumber;
-  private final MessageDigest digest;
+  private final String digestAlgorithm;
   private final Duration keepAliveInterval;
   private final AtomicReference<LockState> state;
 
@@ -63,12 +62,12 @@ public class Lock {
    * sequencers. Fails if a string instance of a SecureRandom number generator cannot be acquired
    *
    * @param name              - the name of the lock
-   * @param digest            - the digest algorithm used to create sequencer random keys
+   * @param digestAlgorithm   - the digest algorithm used to create sequencer random keys
    * @param keepAliveInterval - the amount of time a sequencer is valid for before it's updated
    */
-  public Lock(LockName name, MessageDigest digest, Duration keepAliveInterval) {
+  public Lock(LockName name, String digestAlgorithm, Duration keepAliveInterval) {
     this.name = name;
-    this.digest = digest;
+    this.digestAlgorithm = digestAlgorithm;
     this.keepAliveInterval = keepAliveInterval;
     this.clock = Clock.systemDefaultZone();
     this.headSequenceNumber = new AtomicInteger(0);
@@ -90,9 +89,8 @@ public class Lock {
    *
    * @param name - the Lock's name
    * @throws IllegalArgumentException - if the name is invalid
-   * @throws NoSuchAlgorithmException - if the DEFAULT_DIGEST_ALGORITHM isn't available
    */
-  public Lock(String name) throws IllegalArgumentException, NoSuchAlgorithmException {
+  public Lock(String name) throws IllegalArgumentException {
     this(new LockName(name));
   }
 
@@ -100,10 +98,9 @@ public class Lock {
    * Construct a Lock given a LockName object.
    *
    * @param name - the LockName object for the new lock
-   * @throws NoSuchAlgorithmException - if the DEFAULT_DIGEST_ALGORITHM isn't available
    */
-  public Lock(LockName name) throws NoSuchAlgorithmException {
-    this(name, MessageDigest.getInstance(DEFAULT_DIGEST_ALGORITHM), DEFAULT_KEEP_ALIVE_INTERVAL);
+  public Lock(LockName name) {
+    this(name, DEFAULT_DIGEST_ALGORITHM, DEFAULT_KEEP_ALIVE_INTERVAL);
   }
 
   /**
@@ -141,7 +138,7 @@ public class Lock {
           && head.isPresent()
           && SequencerUtil.checkSequencer(request, head.get())) {
         try {
-          SequencerUtil.verifySequencer(request, head.get(), digest);
+          SequencerUtil.verifySequencer(request, head.get(), digestAlgorithm);
           acquired.set(true);
           LOG.info(
               String.format(
@@ -188,7 +185,7 @@ public class Lock {
           && head.isPresent()
           && SequencerUtil.checkSequencer(request, head.get())) {
         try {
-          SequencerUtil.verifySequencer(request, head.get(), digest);
+          SequencerUtil.verifySequencer(request, head.get(), digestAlgorithm);
           released.set(true);
           LOG.info(
               String.format(
@@ -267,7 +264,7 @@ public class Lock {
     validateSequencer(sequencer);
 
     final Sequencer localSequencer = sequencers.get(sequencer.getSequenceNumber());
-    SequencerUtil.verifySequencer(sequencer, localSequencer, digest);
+    SequencerUtil.verifySequencer(sequencer, localSequencer, digestAlgorithm);
 
     // Update the sequencer and return the new one
     final String newSequencerKey = KeyUtil.generateRandomKey(secureRandom);
@@ -372,7 +369,7 @@ public class Lock {
   }
 
   protected String hashKey(String key) {
-    return KeyUtil.hashKey(key, digest);
+    return KeyUtil.hashKey(key, digestAlgorithm);
   }
 
   protected Optional<Sequencer> getHead() {

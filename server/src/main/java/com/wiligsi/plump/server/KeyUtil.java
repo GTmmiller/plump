@@ -2,8 +2,10 @@ package com.wiligsi.plump.server;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.logging.Logger;
 
 /**
  * A class containing static methods for generating and hashing keys.
@@ -15,6 +17,8 @@ import java.util.Base64;
  * @author Steven Miller
  */
 public class KeyUtil {
+
+  private static final Logger LOG = Logger.getLogger(KeyUtil.class.getName());
 
   private KeyUtil() {
 
@@ -34,15 +38,22 @@ public class KeyUtil {
   }
 
   /**
-   * Create a unique hash of a Base64 encoded key.
+   * Create a unique hash of a Base64 encoded key. If the digestAlgorithm cannot be used then a
+   * runtime exception is thrown due to security reasons.
    *
-   * @param key    the key to hash
-   * @param digest the hashing algorithm to use on the key
+   * @param key             - the key to hash
+   * @param digestAlgorithm - the hashing algorithm to use on the key
    * @return a unique hash of the passed in key using the passed in algorithm
    */
-  static String hashKey(String key, MessageDigest digest) {
-    final byte[] hashedBytes = digest.digest(key.getBytes(StandardCharsets.UTF_8));
-    final Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
-    return encoder.encodeToString(hashedBytes);
+  static String hashKey(String key, String digestAlgorithm) {
+    try {
+      final MessageDigest digest = MessageDigest.getInstance(digestAlgorithm);
+      final byte[] hashedBytes = digest.digest(key.getBytes(StandardCharsets.UTF_8));
+      final Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
+      return encoder.encodeToString(hashedBytes);
+    } catch (NoSuchAlgorithmException exception) {
+      LOG.severe("Passed in digest algorithm '" + digestAlgorithm + "' could not be found.");
+      throw new RuntimeException(exception);
+    }
   }
 }
