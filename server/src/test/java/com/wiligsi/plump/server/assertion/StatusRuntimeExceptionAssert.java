@@ -26,7 +26,7 @@ public class StatusRuntimeExceptionAssert extends
 
   public StatusRuntimeExceptionAssert isLockNameAlreadyExistsExceptionFor(String lockName) {
     isInstanceOf(StatusRuntimeException.class);
-    hasMessageContaining("com.wiligsi.plump.server.Lock named");
+    hasMessageContaining("com.wiligsi.plump.server.lock.Lock named");
     hasMessageContaining(lockName);
     hasMessageContaining("already exists");
     hasFieldOrProperty("status");
@@ -40,7 +40,7 @@ public class StatusRuntimeExceptionAssert extends
 
   public StatusRuntimeExceptionAssert isLockNameNotFoundExceptionFor(String lockName) {
     isInstanceOf(StatusRuntimeException.class);
-    hasMessageContaining("com.wiligsi.plump.server.Lock named");
+    hasMessageContaining("com.wiligsi.plump.server.lock.Lock named");
     hasMessageContaining(lockName);
     hasMessageContaining("does not exist");
     hasFieldOrProperty("status");

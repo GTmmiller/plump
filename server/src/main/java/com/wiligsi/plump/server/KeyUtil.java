@@ -30,7 +30,7 @@ public class KeyUtil {
    * @param secureRandom a cryptographically strong random number generator
    * @return a Base64 String representation of the random key
    */
-  static String generateRandomKey(SecureRandom secureRandom) {
+  public static String generateRandomKey(SecureRandom secureRandom) {
     byte[] keyBytes = new byte[24];
     secureRandom.nextBytes(keyBytes);
     Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
@@ -45,7 +45,7 @@ public class KeyUtil {
    * @param digestAlgorithm - the hashing algorithm to use on the key
    * @return a unique hash of the passed in key using the passed in algorithm
    */
-  static String hashKey(String key, String digestAlgorithm) {
+  public static String hashKey(String key, String digestAlgorithm) {
     try {
       final MessageDigest digest = MessageDigest.getInstance(digestAlgorithm);
       final byte[] hashedBytes = digest.digest(key.getBytes(StandardCharsets.UTF_8));

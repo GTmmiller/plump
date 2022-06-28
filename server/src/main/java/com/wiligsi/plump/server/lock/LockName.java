@@ -1,4 +1,4 @@
-package com.wiligsi.plump.server;
+package com.wiligsi.plump.server.lock;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,7 +30,7 @@ public class LockName {
     if (!lockNameMatcher.matches()) {
       throw new IllegalArgumentException(
           String.format(
-              "com.wiligsi.plump.server.LockName '%s' is invalid. Names should be a series of 4-12"
+              "com.wiligsi.plump.server.lock.LockName '%s' is invalid. Names should be a series of 4-12"
                   + " alphanumeric characters",
               displayName
           )
@@ -84,7 +84,7 @@ public class LockName {
   @Override
   public String toString() {
     return String.format(
-        "com.wiligsi.plump.server.LockName{displayName=%s, internalName=%s}",
+        "com.wiligsi.plump.server.lock.LockName{displayName=%s, internalName=%s}",
         displayName,
         internalName
     );

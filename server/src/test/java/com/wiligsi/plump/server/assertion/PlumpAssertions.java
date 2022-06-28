@@ -2,7 +2,7 @@ package com.wiligsi.plump.server.assertion;
 
 import static com.wiligsi.plump.common.PlumpOuterClass.*;
 
-import com.wiligsi.plump.server.Lock;
+import com.wiligsi.plump.server.lock.Lock;
 import io.grpc.StatusRuntimeException;
 import org.assertj.core.api.InstanceOfAssertFactories;
 

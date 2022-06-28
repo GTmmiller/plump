@@ -1,7 +1,10 @@
-package com.wiligsi.plump.server;
+package com.wiligsi.plump.server.lock;
 
 import static com.wiligsi.plump.common.PlumpOuterClass.Sequencer;
 
+import com.wiligsi.plump.server.InvalidSequencerException;
+import com.wiligsi.plump.server.KeyUtil;
+import com.wiligsi.plump.server.SequencerUtil;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Clock;
@@ -38,22 +41,22 @@ import java.util.logging.Logger;
  *
  * @author Steven Miller
  */
-public class Lock {
+public class PlumpLock implements Lock {
 
-  private static final Logger LOG = Logger.getLogger(PlumpServer.class.getName());
+  private static final Logger LOG = Logger.getLogger(PlumpLock.class.getName());
 
   private static final String DEFAULT_DIGEST_ALGORITHM = "SHA3-256";
 
   private static final Duration DEFAULT_KEEP_ALIVE_INTERVAL = Duration.ofMinutes(2);
 
-  private final LockName name;
-  private final ConcurrentMap<Integer, Sequencer> sequencers;
-  private final SecureRandom secureRandom;
-  private final AtomicInteger nextSequenceNumber;
-  private final AtomicInteger headSequenceNumber;
-  private final String digestAlgorithm;
-  private final Duration keepAliveInterval;
-  private final AtomicReference<LockState> state;
+  protected final LockName name;
+  protected final ConcurrentMap<Integer, Sequencer> sequencers;
+  protected final SecureRandom secureRandom;
+  protected final AtomicInteger nextSequenceNumber;
+  protected final AtomicInteger headSequenceNumber;
+  protected final String digestAlgorithm;
+  protected final Duration keepAliveInterval;
+  protected final AtomicReference<LockState> state;
 
   private Clock clock;
 
@@ -65,7 +68,7 @@ public class Lock {
    * @param digestAlgorithm   - the digest algorithm used to create sequencer random keys
    * @param keepAliveInterval - the amount of time a sequencer is valid for before it's updated
    */
-  public Lock(LockName name, String digestAlgorithm, Duration keepAliveInterval) {
+  public PlumpLock(LockName name, String digestAlgorithm, Duration keepAliveInterval) {
     this.name = name;
     this.digestAlgorithm = digestAlgorithm;
     this.keepAliveInterval = keepAliveInterval;
@@ -90,7 +93,7 @@ public class Lock {
    * @param name - the Lock's name
    * @throws IllegalArgumentException - if the name is invalid
    */
-  public Lock(String name) throws IllegalArgumentException {
+  public PlumpLock(String name) throws IllegalArgumentException {
     this(new LockName(name));
   }
 
@@ -99,7 +102,7 @@ public class Lock {
    *
    * @param name - the LockName object for the new lock
    */
-  public Lock(LockName name) {
+  public PlumpLock(LockName name) {
     this(name, DEFAULT_DIGEST_ALGORITHM, DEFAULT_KEEP_ALIVE_INTERVAL);
   }
 
@@ -108,6 +111,7 @@ public class Lock {
    *
    * @return - the keepAliveInternal
    */
+  @Override
   public Duration getKeepAliveInterval() {
     return keepAliveInterval;
   }
@@ -121,6 +125,7 @@ public class Lock {
    * @return true if the lock was acquired successfully, otherwise false
    * @throws InvalidSequencerException - if the passed in sequencer has expired or does not exist
    */
+  @Override
   public boolean acquire(Sequencer request) throws InvalidSequencerException {
     validateSequencer(request);
     LOG.info(
@@ -168,6 +173,7 @@ public class Lock {
    * @return true if the Lock is released and false if it is not
    * @throws InvalidSequencerException - if the passed in Sequencer has expired or does not exist
    */
+  @Override
   public boolean release(Sequencer request) throws InvalidSequencerException {
     validateSequencer(request);
     LOG.info(
@@ -223,6 +229,7 @@ public class Lock {
    *
    * @return a new sequencer for the lock
    */
+  @Override
   public Sequencer createSequencer() {
     final Instant nextSequencerExpiration = Instant.now(clock).plus(keepAliveInterval);
     final String nextSequencerKey = KeyUtil.generateRandomKey(secureRandom);
@@ -259,6 +266,7 @@ public class Lock {
    * @return an updated version of the passed in Sequencer with a new expiration time
    * @throws InvalidSequencerException if the passed in Sequencer is invalid
    */
+  @Override
   public Sequencer keepAlive(Sequencer sequencer) throws InvalidSequencerException {
     Instant effectiveTime = Instant.now(clock);
     validateSequencer(sequencer);
@@ -284,6 +292,7 @@ public class Lock {
    *
    * @return the Lock's LockName object
    */
+  @Override
   public LockName getName() {
     return name;
   }
@@ -295,6 +304,7 @@ public class Lock {
    *
    * @return the head sequencer number if it exists or an empty optional if there are no Sequencers
    */
+  @Override
   public Optional<Integer> getHeadSequencerNumber() {
     pruneSequencers();
     Optional<Sequencer> head = getHead();
@@ -307,6 +317,7 @@ public class Lock {
    *
    * @return the sequence number the next created Sequencer will have
    */
+  @Override
   public int getNextSequenceNumber() {
     return nextSequenceNumber.get();
   }
@@ -317,6 +328,7 @@ public class Lock {
    *
    * @return UNLOCKED or LOCKED depending on the current state of the Lock
    */
+  @Override
   public LockState getState() {
     return state.get();
   }
@@ -388,7 +400,7 @@ public class Lock {
   @Override
   public String toString() {
     return String.format(
-        "com.wiligsi.plump.server.Lock{name='%s', sequencers=%s, state=%s}",
+        "com.wiligsi.plump.server.lock.Lock{name='%s', sequencers=%s, state=%s}",
         name, sequencers, state
     );
   }

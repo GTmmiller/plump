@@ -2,8 +2,8 @@ package com.wiligsi.plump.server.assertion;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.wiligsi.plump.server.Lock;
-import com.wiligsi.plump.server.LockState;
+import com.wiligsi.plump.server.lock.Lock;
+import com.wiligsi.plump.server.lock.LockState;
 import org.assertj.core.api.AbstractObjectAssert;
 
 public class LockAssert extends AbstractObjectAssert<LockAssert, Lock> {

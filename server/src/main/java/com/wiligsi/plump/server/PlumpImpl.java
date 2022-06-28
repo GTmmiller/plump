@@ -21,6 +21,9 @@ import static com.wiligsi.plump.common.PlumpOuterClass.WhoHasRequest;
 import static com.wiligsi.plump.common.PlumpOuterClass.WhoHasResponse;
 
 import com.wiligsi.plump.common.PlumpGrpc;
+import com.wiligsi.plump.server.lock.Lock;
+import com.wiligsi.plump.server.lock.LockName;
+import com.wiligsi.plump.server.lock.LockState;
 import io.grpc.Status;
 import io.grpc.StatusException;
 import io.grpc.stub.StreamObserver;
@@ -30,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -53,18 +57,20 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
   final ConcurrentMap<String, LockName> destroyKeyHashMap;
   final SecureRandom secureRandom;
   final String digestAlgorithm;
+  final Function<LockName, Lock> lockCreator;
 
   /**
    * Create a new PlumpImpl instance.
    *
    * @throws NoSuchAlgorithmException if the DEFAULT_DIGEST_ALGORITHM isn't available
    */
-  public PlumpImpl() throws NoSuchAlgorithmException {
+  public PlumpImpl(Function<LockName, Lock> lockCreator) throws NoSuchAlgorithmException {
     super();
     locks = new ConcurrentHashMap<>();
     destroyKeyHashMap = new ConcurrentHashMap<>();
     secureRandom = SecureRandom.getInstanceStrong();
     digestAlgorithm = DEFAULT_DIGEST_ALGORITHM;
+    this.lockCreator = lockCreator;
   }
 
   /**
@@ -372,7 +378,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
 
   protected Lock buildLock(LockName lockName) throws StatusException {
     try {
-      return new Lock(lockName);
+      return lockCreator.apply(lockName);
     } catch (IllegalArgumentException argumentException) {
       throw asStatusException(Status.INVALID_ARGUMENT, argumentException);
     }
@@ -412,7 +418,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     return Status.ALREADY_EXISTS
         .withDescription(
             String.format(
-                "com.wiligsi.plump.server.Lock named '%s' already exists",
+                "com.wiligsi.plump.server.lock.Lock named '%s' already exists",
                 lockName.getDisplayName()
             )
         ).asException();
@@ -422,7 +428,7 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
     return Status.NOT_FOUND
         .withDescription(
             String.format(
-                "com.wiligsi.plump.server.Lock named '%s' does not exist",
+                "com.wiligsi.plump.server.lock.Lock named '%s' does not exist",
                 lockName.getDisplayName()
             )
         )

@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import com.wiligsi.plump.common.PlumpGrpc;
 import com.wiligsi.plump.server.concurrency.PlumpWorker;
+import com.wiligsi.plump.server.lock.PlumpLock;
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.StatusRuntimeException;
@@ -56,7 +57,7 @@ public class ServerTests {
     String serverName = InProcessServerBuilder.generateName();
     plumpServer = InProcessServerBuilder.forName(serverName)
         .directExecutor()
-        .addService(new PlumpImpl())
+        .addService(new PlumpImpl(PlumpLock::new))
         .build();
     plumpServer.start();
 

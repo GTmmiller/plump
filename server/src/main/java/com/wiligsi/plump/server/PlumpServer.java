@@ -1,5 +1,6 @@
 package com.wiligsi.plump.server;
 
+import com.wiligsi.plump.server.lock.PlumpLock;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import java.io.IOException;
@@ -46,7 +47,7 @@ public class PlumpServer {
   public void start() throws IOException, NoSuchAlgorithmException {
 
     server = ServerBuilder.forPort(port)
-        .addService(new PlumpImpl())
+        .addService(new PlumpImpl(PlumpLock::new))
         .build()
         .start();
     LOG.info("Server started, listening on port: " + port);
