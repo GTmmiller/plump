@@ -35,7 +35,8 @@ import picocli.CommandLine.Parameters;
  * @author Steven Miller
  */
 @Command(name = "plumpc", version = "plump 1.0",
-    description = "provides", subcommands = {HelpCommand.class}, subcommandsRepeatable = true,
+    description = "provides a simple client interface to interact with a plump server",
+    subcommands = {HelpCommand.class}, subcommandsRepeatable = true,
     synopsisSubcommandLabel = "COMMAND")
 public class PlumpCli {
 

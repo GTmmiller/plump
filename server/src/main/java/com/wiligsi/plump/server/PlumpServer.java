@@ -1,11 +1,14 @@
 package com.wiligsi.plump.server;
 
+import com.wiligsi.plump.server.lock.Lock;
+import com.wiligsi.plump.server.lock.LockName;
 import com.wiligsi.plump.server.lock.PlumpLock;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 /**
@@ -21,12 +24,13 @@ public class PlumpServer {
 
   private Server server;
   private final int port;
+  private final Function<LockName, Lock> lockCreator;
 
   /**
    * Constructs a new server on the default port.
    */
   public PlumpServer() {
-    this(DEFAULT_PORT);
+    this(DEFAULT_PORT, PlumpLock::new);
   }
 
   /**
@@ -34,8 +38,9 @@ public class PlumpServer {
    *
    * @param port - the port number to run the server on
    */
-  public PlumpServer(int port) {
+  public PlumpServer(int port, Function<LockName, Lock> lockCreator) {
     this.port = port;
+    this.lockCreator = lockCreator;
   }
 
   /**
@@ -47,7 +52,7 @@ public class PlumpServer {
   public void start() throws IOException, NoSuchAlgorithmException {
 
     server = ServerBuilder.forPort(port)
-        .addService(new PlumpImpl(PlumpLock::new))
+        .addService(new PlumpImpl(lockCreator))
         .build()
         .start();
     LOG.info("Server started, listening on port: " + port);
