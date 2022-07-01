@@ -111,6 +111,28 @@ public class PlumpClient {
   }
 
   /**
+   * Continually try to acquire a lock until the server errors, or you get the lock.
+   * @param lockSequencer - the Sequencer used to acquire the Lock.
+   * @return the Sequencer used to acquire the Lock.
+   */
+  public Sequencer awaitLock(Sequencer lockSequencer) throws InterruptedException {
+    Sequencer updatedSequencer = lockSequencer;
+    boolean locked = false;
+    while (!locked) {
+      LOG.info("Attempting to lock");
+      LockResponse response = acquireLock(updatedSequencer);
+
+      updatedSequencer = response.getUpdatedSequencer();
+      locked = response.getSuccess();
+      if (!locked) {
+        Thread.sleep(2);
+      }
+    }
+
+    return updatedSequencer;
+  }
+
+  /**
    * Release a Lock you have acquired with the Sequencer used to acquire the Lock.
    *
    * @param unlockSequencer - the sequencer used to acquire the lock.
