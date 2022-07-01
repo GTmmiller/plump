@@ -21,6 +21,8 @@ import static com.wiligsi.plump.common.PlumpOuterClass.WhoHasRequest;
 import static com.wiligsi.plump.common.PlumpOuterClass.WhoHasResponse;
 
 import com.wiligsi.plump.common.PlumpGrpc;
+import com.wiligsi.plump.common.PlumpOuterClass.RevokeRequest;
+import com.wiligsi.plump.common.PlumpOuterClass.RevokeResponse;
 import com.wiligsi.plump.server.lock.Lock;
 import com.wiligsi.plump.server.lock.LockName;
 import com.wiligsi.plump.server.lock.LockState;
@@ -269,6 +271,12 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
           asStatusException(Status.INVALID_ARGUMENT, sequencerException)
       );
     }
+  }
+
+  @Override
+  public void revokeSequencer(RevokeRequest request,
+      StreamObserver<RevokeResponse> responseObserver) {
+    // Verify the sequencer
   }
 
   /**

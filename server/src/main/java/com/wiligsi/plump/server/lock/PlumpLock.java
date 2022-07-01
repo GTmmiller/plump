@@ -183,44 +183,8 @@ public class PlumpLock implements Lock {
             request.getSequenceNumber()
         )
     );
-    final AtomicBoolean released = new AtomicBoolean(false);
-    state.updateAndGet(state -> {
-      pruneSequencers();
-      final Optional<Sequencer> head = getHead();
-      if (state == LockState.LOCKED
-          && head.isPresent()
-          && SequencerUtil.checkSequencer(request, head.get())) {
-        try {
-          SequencerUtil.verifySequencer(request, head.get(), digestAlgorithm);
-          released.set(true);
-          LOG.info(
-              String.format(
-                  "Lock{%s}: Released with sequencer '%d'",
-                  request.getLockName(),
-                  request.getSequenceNumber()
-              )
-          );
-          return LockState.UNLOCKED;
-        } catch (InvalidSequencerException sequencerException) {
-          LOG.severe("verification exception when attempting to release lock!");
-          LOG.severe(sequencerException.getMessage());
-        }
-      }
-      return state;
-    });
 
-    if (released.get()) {
-      final int oldHead = headSequenceNumber.getAndIncrement();
-      sequencers.remove(oldHead);
-      LOG.info(
-          String.format(
-              "Lock{%s}: Old sequencer '%d' removed from head",
-              request.getLockName(),
-              oldHead
-          )
-      );
-    }
-    return released.get();
+    return internalReleaseLock(request);
   }
 
   /**
@@ -254,6 +218,22 @@ public class PlumpLock implements Lock {
     return Sequencer.newBuilder(partialSequencer)
         .setKey(nextSequencerKey)
         .build();
+  }
+
+  @Override
+  public void revokeSequencer(Sequencer request) throws InvalidSequencerException {
+    validateSequencer(request);
+    LOG.info(
+        String.format(
+            "Lock{%s}: Attempting to revoke sequencer '%d'",
+            request.getLockName(),
+            request.getSequenceNumber()
+        )
+    );
+
+    if (!internalReleaseLock(request)) {
+      sequencers.remove(request.getSequenceNumber());
+    }
   }
 
   /**
@@ -395,6 +375,48 @@ public class PlumpLock implements Lock {
 
   protected void setClock(Clock clock) {
     this.clock = clock;
+  }
+
+  protected boolean internalReleaseLock(Sequencer request) {
+    final AtomicBoolean released = new AtomicBoolean(false);
+    state.updateAndGet(state -> {
+      pruneSequencers();
+      final Optional<Sequencer> head = getHead();
+      if (state == LockState.LOCKED
+          && head.isPresent()
+          && SequencerUtil.checkSequencer(request, head.get())) {
+        try {
+          SequencerUtil.verifySequencer(request, head.get(), digestAlgorithm);
+          released.set(true);
+          LOG.info(
+              String.format(
+                  "Lock{%s}: Released with sequencer '%d'",
+                  request.getLockName(),
+                  request.getSequenceNumber()
+              )
+          );
+          return LockState.UNLOCKED;
+        } catch (InvalidSequencerException sequencerException) {
+          LOG.severe("verification exception when attempting to release lock!");
+          LOG.severe(sequencerException.getMessage());
+        }
+      }
+      return state;
+    });
+
+    if (released.get()) {
+      final int oldHead = headSequenceNumber.getAndIncrement();
+      sequencers.remove(oldHead);
+      LOG.info(
+          String.format(
+              "Lock{%s}: Old sequencer '%d' removed from head",
+              request.getLockName(),
+              oldHead
+          )
+      );
+    }
+
+    return released.get();
   }
 
   @Override

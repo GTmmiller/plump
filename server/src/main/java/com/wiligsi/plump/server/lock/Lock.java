@@ -15,6 +15,8 @@ public interface Lock {
 
   Sequencer createSequencer();
 
+  void revokeSequencer(Sequencer request) throws InvalidSequencerException;
+
   Sequencer keepAlive(Sequencer sequencer) throws InvalidSequencerException;
 
   LockName getName();

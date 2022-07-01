@@ -11,6 +11,7 @@ service Plump {
   rpc AcquireLock (LockRequest) returns (LockResponse) {}
   rpc KeepAlive (KeepAliveRequest) returns (KeepAliveResponse) {}
   rpc ReleaseLock (ReleaseRequest) returns(ReleaseResponse) {}
+  rpc RevokeSequencer(RevokeRequest) returns(RevokeResponse) {}
 
   // Introspection functions
   rpc WhoHasLock (WhoHasRequest) returns (WhoHasResponse) {}
@@ -86,6 +87,15 @@ message ReleaseResponse {
   bool success = 2;
   uint64 keep_alive_interval = 3;
 }
+
+// RevokeSequencer
+message RevokeRequest {
+  Sequencer sequencer = 1;
+}
+ 
+message RevokeResponse {
+}
+
 
 // WhoHas
 message WhoHasRequest {

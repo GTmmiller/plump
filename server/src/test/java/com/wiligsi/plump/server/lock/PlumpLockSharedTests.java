@@ -81,14 +81,16 @@ public class PlumpLockSharedTests {
 
   @ParameterizedTest
   @MethodSource("provideLocks")
-  public void itShouldOnlyUnlockWithHeadSequencer(PlumpLock paramLock) throws InvalidSequencerException {
+  public void itShouldOnlyUnlockWithHeadSequencer(PlumpLock paramLock)
+      throws InvalidSequencerException {
     final Sequencer sequencer = paramLock.createSequencer();
     final Sequencer secondarySequencer = paramLock.createSequencer();
 
     paramLock.acquire(sequencer);
     Assertions.assertThat(paramLock.release(secondarySequencer)).isFalse();
     assertThat(paramLock).isLocked();
-    Assertions.assertThat(paramLock.getHeadSequencerNumber()).contains(sequencer.getSequenceNumber());
+    Assertions.assertThat(paramLock.getHeadSequencerNumber())
+        .contains(sequencer.getSequenceNumber());
   }
 
   @ParameterizedTest
@@ -113,7 +115,8 @@ public class PlumpLockSharedTests {
 
   @ParameterizedTest
   @MethodSource("provideLocks")
-  public void itShouldNotLetASequencerBeUsedTwice(PlumpLock paramLock) throws InvalidSequencerException {
+  public void itShouldNotLetASequencerBeUsedTwice(PlumpLock paramLock)
+      throws InvalidSequencerException {
     final Sequencer sequencer = paramLock.createSequencer();
 
     paramLock.acquire(sequencer);
@@ -127,7 +130,8 @@ public class PlumpLockSharedTests {
 
   @ParameterizedTest
   @MethodSource("provideLocks")
-  public void itShouldImplicitlyRemoveOverdueSequencer(PlumpLock paramLock) throws InvalidSequencerException {
+  public void itShouldImplicitlyRemoveOverdueSequencer(PlumpLock paramLock)
+      throws InvalidSequencerException {
     final Sequencer overdueSequencer = paramLock.createSequencer();
     final Sequencer onTimeSequencer;
 
@@ -137,12 +141,14 @@ public class PlumpLockSharedTests {
 
     Assertions.assertThat(paramLock.release(overdueSequencer)).isFalse();
     assertThat(paramLock).isUnlocked();
-    Assertions.assertThat(paramLock.getHeadSequencerNumber()).contains(onTimeSequencer.getSequenceNumber());
+    Assertions.assertThat(paramLock.getHeadSequencerNumber())
+        .contains(onTimeSequencer.getSequenceNumber());
   }
 
   @ParameterizedTest
   @MethodSource("provideLocks")
-  public void itShouldUnlockWhenHeadSequencerIsOverdue(PlumpLock paramLock) throws InvalidSequencerException {
+  public void itShouldUnlockWhenHeadSequencerIsOverdue(PlumpLock paramLock)
+      throws InvalidSequencerException {
     final Sequencer overdueSequencer = paramLock.createSequencer();
     final Sequencer onTimeSequencer;
 
@@ -151,7 +157,8 @@ public class PlumpLockSharedTests {
     onTimeSequencer = paramLock.createSequencer();
     setTestClockAhead(paramLock, Duration.ofMinutes(2));
 
-    Assertions.assertThat(paramLock.getHeadSequencerNumber()).contains(onTimeSequencer.getSequenceNumber());
+    Assertions.assertThat(paramLock.getHeadSequencerNumber())
+        .contains(onTimeSequencer.getSequenceNumber());
     assertThat(paramLock).isUnlocked();
   }
 
@@ -163,18 +170,21 @@ public class PlumpLockSharedTests {
     final Sequencer aliveSequencer = paramLock.keepAlive(sequencer);
     setTestClockAhead(paramLock, Duration.ofMinutes(2));
 
-    Assertions.assertThat(paramLock.getHeadSequencerNumber()).contains(sequencer.getSequenceNumber());
+    Assertions.assertThat(paramLock.getHeadSequencerNumber())
+        .contains(sequencer.getSequenceNumber());
     assertThat(aliveSequencer).isUpdatedFrom(sequencer);
   }
 
   @ParameterizedTest
   @MethodSource("provideLocks")
-  public void itShouldKeepSequencerAliveInPlace(PlumpLock paramLock) throws InvalidSequencerException {
+  public void itShouldKeepSequencerAliveInPlace(PlumpLock paramLock)
+      throws InvalidSequencerException {
     final Sequencer headSequencer = paramLock.createSequencer();
     final Sequencer keepAliveSequencer = paramLock.createSequencer();
     setTestClockAhead(paramLock, Duration.ofMinutes(1));
     paramLock.keepAlive(keepAliveSequencer);
-    Assertions.assertThat(paramLock.getHeadSequencerNumber()).contains(headSequencer.getSequenceNumber());
+    Assertions.assertThat(paramLock.getHeadSequencerNumber())
+        .contains(headSequencer.getSequenceNumber());
   }
 
   @ParameterizedTest
@@ -185,6 +195,42 @@ public class PlumpLockSharedTests {
 
     assertThatThrownBy(
         () -> paramLock.keepAlive(dudSequencer)
+    ).isInstanceOf(InvalidSequencerException.class);
+  }
+
+  @ParameterizedTest
+  @MethodSource("provideLocks")
+  public void itShouldRevokeAValidSequencer(PlumpLock paramLock) throws InvalidSequencerException {
+    final Sequencer sequencer = paramLock.createSequencer();
+    paramLock.revokeSequencer(sequencer);
+
+    assertThatThrownBy(
+        () -> paramLock.acquire(sequencer)
+    ).isInstanceOf(InvalidSequencerException.class);
+  }
+
+  @ParameterizedTest
+  @MethodSource("provideLocks")
+  public void itShouldThrowExceptionForDudRevoke(PlumpLock paramLock) {
+    final Sequencer dudSequencer = dudSequencerSupplier.get();
+
+    assertThatThrownBy(
+        () -> paramLock.revokeSequencer(dudSequencer)
+    ).isInstanceOf(InvalidSequencerException.class);
+  }
+
+  @ParameterizedTest
+  @MethodSource("provideLocks")
+  public void itShouldRevokeAndUnlockWhenUsedOnLockedHead(PlumpLock paramLock)
+      throws InvalidSequencerException {
+    final Sequencer sequencer = paramLock.createSequencer();
+
+    paramLock.acquire(sequencer);
+    paramLock.revokeSequencer(sequencer);
+
+    assertThat(paramLock).isUnlocked();
+    assertThatThrownBy(
+        () -> paramLock.release(sequencer)
     ).isInstanceOf(InvalidSequencerException.class);
   }
 
