@@ -22,13 +22,17 @@ import static com.wiligsi.plump.common.PlumpOuterClass.WhoHasResponse;
 import static com.wiligsi.plump.server.assertion.PlumpAssertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import com.wiligsi.plump.common.PlumpGrpc;
+import com.wiligsi.plump.common.PlumpOuterClass.RevokeRequest;
+import com.wiligsi.plump.common.PlumpOuterClass.RevokeResponse;
 import com.wiligsi.plump.server.concurrency.PlumpWorker;
 import com.wiligsi.plump.server.lock.PlumpLock;
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
+import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
@@ -42,6 +46,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 public class ServerTests {
@@ -378,6 +383,86 @@ public class ServerTests {
   }
 
   @Nested
+  public class RevokeSequencerTests {
+    @Test
+    public void itShouldRevokeAValidSequencer() {
+      createTestLock();
+      final Sequencer sequencer = acquireTestLockSequencer();
+
+      revokeSequencer(sequencer);
+      StatusRuntimeException throwable = catchThrowableOfType(
+          () -> revokeSequencer(sequencer),
+          StatusRuntimeException.class
+      );
+
+      assertThat(throwable).isInvalidSequencerExceptionFor(TEST_LOCK_NAME);
+    }
+
+    @Test
+    public void itShouldReleaseLockWhenSequencerHasLockedHead() {
+      createTestLock();
+      final Sequencer sequencer = acquireTestLockSequencer();
+      acquireLock(sequencer);
+      revokeSequencer(sequencer);
+
+      assertThat(whoHasTestLock()).hasFieldOrPropertyWithValue("locked", false);
+
+      StatusRuntimeException throwable = catchThrowableOfType(
+          () -> acquireLock(sequencer),
+          StatusRuntimeException.class
+      );
+
+      assertThat(throwable).isInvalidSequencerExceptionFor(TEST_LOCK_NAME);
+    }
+
+    @Test
+    public void itShouldErrorOnNullSequencer() {
+      StatusRuntimeException throwable = catchThrowableOfType(
+          () -> plumpBlockingStub.revokeSequencer(RevokeRequest.newBuilder().build()),
+          StatusRuntimeException.class
+      );
+
+      assertThat(throwable).isNullSequencerException();
+    }
+
+//    @ParameterizedTest
+//    @MethodSource("provideLocks")
+//    public void itShouldRevokeAValidSequencer(PlumpLock paramLock) throws InvalidSequencerException {
+//      final Sequencer sequencer = paramLock.createSequencer();
+//      paramLock.revokeSequencer(sequencer);
+//
+//      assertThatThrownBy(
+//          () -> paramLock.acquire(sequencer)
+//      ).isInstanceOf(InvalidSequencerException.class);
+//    }
+//
+//    @ParameterizedTest
+//    @MethodSource("provideLocks")
+//    public void itShouldThrowExceptionForDudRevoke(PlumpLock paramLock) {
+//      final Sequencer dudSequencer = dudSequencerSupplier.get();
+//
+//      assertThatThrownBy(
+//          () -> paramLock.revokeSequencer(dudSequencer)
+//      ).isInstanceOf(InvalidSequencerException.class);
+//    }
+//
+//    @ParameterizedTest
+//    @MethodSource("provideLocks")
+//    public void itShouldRevokeAndUnlockWhenUsedOnLockedHead(PlumpLock paramLock)
+//        throws InvalidSequencerException {
+//      final Sequencer sequencer = paramLock.createSequencer();
+//
+//      paramLock.acquire(sequencer);
+//      paramLock.revokeSequencer(sequencer);
+//
+//      assertThat(paramLock).isUnlocked();
+//      assertThatThrownBy(
+//          () -> paramLock.release(sequencer)
+//      ).isInstanceOf(InvalidSequencerException.class);
+//    }
+  }
+
+  @Nested
   public class WhoHasTests {
 
     @Test
@@ -563,6 +648,14 @@ public class ServerTests {
         ReleaseRequest.newBuilder()
             .setSequencer(sequencer)
             .build()
+    );
+  }
+
+  private RevokeResponse revokeSequencer(Sequencer sequencer) {
+    return plumpBlockingStub.revokeSequencer(
+      RevokeRequest.newBuilder()
+          .setSequencer(sequencer)
+          .build()
     );
   }
 

@@ -276,7 +276,26 @@ public class PlumpImpl extends PlumpGrpc.PlumpImplBase {
   @Override
   public void revokeSequencer(RevokeRequest request,
       StreamObserver<RevokeResponse> responseObserver) {
-    // Verify the sequencer
+    try {
+      ensureHasSequencer(request.hasSequencer());
+      final Sequencer revokeSequencer = request.getSequencer();
+      final LockName lockName = buildLockName(revokeSequencer.getLockName());
+      ensureLockExists(lockName);
+
+      final Lock revokeLock = safeGetLock(lockName);
+      revokeLock.revokeSequencer(revokeSequencer);
+
+      responseObserver.onNext(
+          RevokeResponse.newBuilder().build()
+      );
+      responseObserver.onCompleted();
+    } catch (StatusException exception) {
+      responseObserver.onError(exception);
+    } catch (InvalidSequencerException sequencerException) {
+      responseObserver.onError(
+          asStatusException(Status.INVALID_ARGUMENT, sequencerException)
+      );
+    }
   }
 
   /**
