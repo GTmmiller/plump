@@ -33,7 +33,7 @@ public class Main implements Callable<Integer> {
       "slim", SlimLock::new
   );
 
-  @Option(names = {"-p", "--port"}, description = "The port number the server should run on" )
+  @Option(names = {"-p", "--port"}, description = "The port number the server should run on")
   protected int serverPort = PlumpServer.DEFAULT_PORT;
 
   @Option(names = {"-l", "--lock-type"}, description = "The Lock type to use with the server")
@@ -47,7 +47,7 @@ public class Main implements Callable<Integer> {
 
     if (lockCreator.isEmpty()) {
       System.err.printf("Lock type '%s' is not available.%n"
-          + "The following lock types are available: '%s'%n",
+              + "The following lock types are available: '%s'%n",
           lockType, CLI_LOCKS.keySet()
       );
       return -1;

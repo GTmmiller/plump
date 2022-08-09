@@ -30,8 +30,8 @@ public class LockName {
     if (!lockNameMatcher.matches()) {
       throw new IllegalArgumentException(
           String.format(
-              "com.wiligsi.plump.server.lock.LockName '%s' is invalid. Names should be a series of 4-12"
-                  + " alphanumeric characters",
+              "com.wiligsi.plump.server.lock.LockName '%s' is invalid. "
+                  + "Names should be a series of 4-12 alphanumeric characters",
               displayName
           )
       );

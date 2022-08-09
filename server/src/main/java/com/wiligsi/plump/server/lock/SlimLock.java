@@ -8,6 +8,13 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
+/**
+ * This 'SlimLock' is used to represent a lock that is lockable by anyone with a claim whenever it
+ * is available. This is closer to the traditional locking model than the sequencer model provided
+ * by a normal PlumpLock.
+ *
+ * @author Steven Miller
+ */
 public class SlimLock extends PlumpLock {
 
   private static final Logger LOG = Logger.getLogger(SlimLock.class.getName());
@@ -24,6 +31,13 @@ public class SlimLock extends PlumpLock {
     super(name);
   }
 
+  /**
+   * The acquire method for the SlimLock works for any valid Sequencer.
+   *
+   * @param request - the sequencer used to acquire the lock
+   * @return true if the lock was acquired and false if it wasn't
+   * @throws InvalidSequencerException - if the sequencer passed to the SlimLock is invalid
+   */
   @Override
   public boolean acquire(Sequencer request) throws InvalidSequencerException {
     validateSequencer(request);

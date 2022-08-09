@@ -5,6 +5,11 @@ import com.wiligsi.plump.server.InvalidSequencerException;
 import java.time.Duration;
 import java.util.Optional;
 
+/**
+ * This interface represents actions plump expects a lock to be able to perform.
+ *
+ * @author Steven Miller
+ */
 public interface Lock {
 
   Duration getKeepAliveInterval();
