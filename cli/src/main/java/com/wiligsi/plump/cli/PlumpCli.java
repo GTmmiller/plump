@@ -4,6 +4,7 @@ import com.wiligsi.plump.client.PlumpClient;
 import com.wiligsi.plump.common.PlumpOuterClass.KeepAliveResponse;
 import com.wiligsi.plump.common.PlumpOuterClass.LockResponse;
 import com.wiligsi.plump.common.PlumpOuterClass.ReleaseResponse;
+import com.wiligsi.plump.common.PlumpOuterClass.RevokeResponse;
 import com.wiligsi.plump.common.PlumpOuterClass.Sequencer;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -140,6 +141,38 @@ public class PlumpCli {
         sequencer.getLockName());
 
     saveStateToFile();
+  }
+
+  @Command(name = "revoke", description = "Revoke a sequencer that will not be used")
+  int revokeSequencer(
+      @Mixin SequencerOptions options
+  ) throws IOException {
+    final Optional<Sequencer> commandSequencer = getCommandSequencer(options);
+    if (commandSequencer.isEmpty()) {
+      return -11;
+    }
+
+    final Sequencer revokeSequencer = commandSequencer.get();
+
+    System.out.printf(
+        "Revoking sequencer%n%s%non lock '%s' on server at '%s' %n",
+        revokeSequencer, options.lockName, serverUrl
+    );
+
+    client.revokeSequencer(revokeSequencer);
+
+    System.out.printf(
+        "Sequencer '%d' revoked on lock '%s'!%n",
+        revokeSequencer.getSequenceNumber(), options.lockName
+    );
+
+    if (!options.manual) {
+      // Remove revoke sequencer
+      state.removeLockSequencer(serverUrl, options.lockName);
+      saveStateToFile();
+    }
+
+    return 0;
   }
 
   @Command(name = "lock", description = "Acquire a lock using a sequencer")

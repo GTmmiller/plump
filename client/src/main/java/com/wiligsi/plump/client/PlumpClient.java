@@ -17,6 +17,8 @@ import static com.wiligsi.plump.common.PlumpOuterClass.WhoHasRequest;
 import static com.wiligsi.plump.common.PlumpOuterClass.WhoHasResponse;
 
 import com.wiligsi.plump.common.PlumpGrpc;
+import com.wiligsi.plump.common.PlumpOuterClass.RevokeRequest;
+import com.wiligsi.plump.common.PlumpOuterClass.RevokeResponse;
 import io.grpc.Channel;
 import java.util.List;
 import java.util.Optional;
@@ -94,6 +96,19 @@ public class PlumpClient {
         .setLockName(lockName)
         .build();
     return plumpBlockingStub.acquireSequencer(request).getSequencer();
+  }
+
+  /**
+   * Revoke a sequencer that will not be used anymore.
+   *
+   * @param revokeSequencer - The Sequencer that will be revoked.
+   */
+  public void revokeSequencer(Sequencer revokeSequencer) {
+    plumpBlockingStub.revokeSequencer(
+        RevokeRequest.newBuilder()
+            .setSequencer(revokeSequencer)
+            .build()
+    );
   }
 
   /**

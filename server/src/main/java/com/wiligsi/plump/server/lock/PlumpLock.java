@@ -220,19 +220,25 @@ public class PlumpLock implements Lock {
         .build();
   }
 
+  /**
+   * Revoke a valid sequencer to avoid dead sequencers staying in a lock
+   *
+   * @param sequencer - The passed in Sequencer to be revoked
+   * @throws InvalidSequencerException if the passed in Sequencer is invalid
+   */
   @Override
-  public void revokeSequencer(Sequencer request) throws InvalidSequencerException {
-    validateSequencer(request);
+  public void revokeSequencer(Sequencer sequencer) throws InvalidSequencerException {
+    validateSequencer(sequencer);
     LOG.info(
         String.format(
             "Lock{%s}: Attempting to revoke sequencer '%d'",
-            request.getLockName(),
-            request.getSequenceNumber()
+            sequencer.getLockName(),
+            sequencer.getSequenceNumber()
         )
     );
 
-    if (!internalReleaseLock(request)) {
-      sequencers.remove(request.getSequenceNumber());
+    if (!internalReleaseLock(sequencer)) {
+      sequencers.remove(sequencer.getSequenceNumber());
     }
   }
 
