@@ -245,6 +245,7 @@
                     <failsOnError>true</failsOnError>
                     <violationSeverity>warning</violationSeverity>
                     <linkXRef>false</linkXRef>
+                    <sourceDirectories>${project.build.sourceDirectory}</sourceDirectories>
                 </configuration>
                 <executions>
                     <execution>
