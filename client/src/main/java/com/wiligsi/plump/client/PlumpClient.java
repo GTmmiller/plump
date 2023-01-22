@@ -18,7 +18,6 @@ import static com.wiligsi.plump.common.PlumpOuterClass.WhoHasResponse;
 
 import com.wiligsi.plump.common.PlumpGrpc;
 import com.wiligsi.plump.common.PlumpOuterClass.RevokeRequest;
-import com.wiligsi.plump.common.PlumpOuterClass.RevokeResponse;
 import io.grpc.Channel;
 import java.util.List;
 import java.util.Optional;
@@ -127,6 +126,7 @@ public class PlumpClient {
 
   /**
    * Continually try to acquire a lock until the server errors, or you get the lock.
+   *
    * @param lockSequencer - the Sequencer used to acquire the Lock.
    * @return the Sequencer used to acquire the Lock.
    */

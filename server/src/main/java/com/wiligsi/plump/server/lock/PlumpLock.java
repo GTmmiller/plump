@@ -221,7 +221,7 @@ public class PlumpLock implements Lock {
   }
 
   /**
-   * Revoke a valid sequencer to avoid dead sequencers staying in a lock
+   * Revoke a valid sequencer to avoid dead sequencers staying in a lock.
    *
    * @param sequencer - The passed in Sequencer to be revoked
    * @throws InvalidSequencerException if the passed in Sequencer is invalid
