@@ -13,7 +13,7 @@
         <module>common</module>
         <module>server</module>
         <module>client</module>
-        <module>cli</module>g
+        <module>cli</module>
     </modules>
 
     <properties>
