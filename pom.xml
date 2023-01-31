@@ -259,4 +259,12 @@
             </plugin>
         </plugins>
     </build>
+
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/GTmmiller/plump</url>
+        </repository>
+    </distributionManagement>
 </project>
