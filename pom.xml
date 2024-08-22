@@ -24,7 +24,7 @@
         <grpc.version>1.40.0</grpc.version>
         <protobuf.version>3.17.2</protobuf.version>
         <protoc.version>3.17.2</protoc.version>
-        <junit.version>5.8.0</junit.version>
+        <junit.version>5.11.0</junit.version>
         <tomcat.version>6.0.53</tomcat.version>
         <assertj.version>3.20.2</assertj.version>
         <checkstyle.version>9.1</checkstyle.version>
