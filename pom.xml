@@ -21,7 +21,7 @@
         <project.build.outputTimestamp>1</project.build.outputTimestamp>
 
         <!-- Dependency versions -->
-        <grpc.version>1.40.0</grpc.version>
+        <grpc.version>1.66.0</grpc.version>
         <protobuf.version>3.17.2</protobuf.version>
         <protoc.version>3.17.2</protoc.version>
         <junit.version>5.11.0</junit.version>
