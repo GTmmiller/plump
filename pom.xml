@@ -35,7 +35,7 @@
         <protobuf_plugin.version>0.6.1</protobuf_plugin.version>
         <jar_plugin.version>3.2.0</jar_plugin.version>
         <source_plugin.version>3.3.1</source_plugin.version>
-        <assembly_plugin.version>3.3.0</assembly_plugin.version>
+        <assembly_plugin.version>3.7.1</assembly_plugin.version>
         <artifact_plugin.version>3.1.0</artifact_plugin.version>
         <dependency_plugin.version>3.2.0</dependency_plugin.version>
         <surefire_plugin.version>3.0.0-M5</surefire_plugin.version>
