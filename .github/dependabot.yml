@@ -1,0 +1,13 @@
+version: 2
+updates:
+  - package-ecosystem: "maven"
+    directories:
+      - "/cli"
+      - "/client"
+      - "/common"
+      - "/server"
+      - "/"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "18:00"
