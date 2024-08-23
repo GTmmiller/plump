@@ -33,7 +33,7 @@
         <!-- Plugin versions -->
         <os_plugin.version>1.6.2</os_plugin.version>
         <protobuf_plugin.version>0.6.1</protobuf_plugin.version>
-        <jar_plugin.version>3.2.0</jar_plugin.version>
+        <jar_plugin.version>3.4.2</jar_plugin.version>
         <source_plugin.version>3.3.1</source_plugin.version>
         <assembly_plugin.version>3.7.1</assembly_plugin.version>
         <artifact_plugin.version>3.5.1</artifact_plugin.version>
