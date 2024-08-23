@@ -38,7 +38,7 @@
         <assembly_plugin.version>3.7.1</assembly_plugin.version>
         <artifact_plugin.version>3.5.1</artifact_plugin.version>
         <dependency_plugin.version>3.8.0</dependency_plugin.version>
-        <surefire_plugin.version>3.0.0-M5</surefire_plugin.version>
+        <surefire_plugin.version>3.4.0</surefire_plugin.version>
         <compiler_plugin.version>3.8.0</compiler_plugin.version>
         <checkstyle_plugin.version>3.1.2</checkstyle_plugin.version>
         <site_plugin.version>3.20.0</site_plugin.version>
