@@ -40,7 +40,7 @@
         <dependency_plugin.version>3.8.0</dependency_plugin.version>
         <surefire_plugin.version>3.0.0-M5</surefire_plugin.version>
         <compiler_plugin.version>3.8.0</compiler_plugin.version>
-        <checkstyle_plugin.version>3.1.2</checkstyle_plugin.version>
+        <checkstyle_plugin.version>3.5.0</checkstyle_plugin.version>
         <site_plugin.version>3.20.0</site_plugin.version>
         <project_info_reports_plugin.version>3.4.2</project_info_reports_plugin.version>
         <javadoc_plugin.version>3.8.0</javadoc_plugin.version>
