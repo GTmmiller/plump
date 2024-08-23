@@ -21,29 +21,29 @@
         <project.build.outputTimestamp>1</project.build.outputTimestamp>
 
         <!-- Dependency versions -->
-        <grpc.version>1.40.0</grpc.version>
+        <grpc.version>1.66.0</grpc.version>
         <protobuf.version>4.27.3</protobuf.version>
         <protoc.version>3.17.2</protoc.version>
-        <junit.version>5.8.0</junit.version>
+        <junit.version>5.11.0</junit.version>
         <tomcat.version>6.0.53</tomcat.version>
         <assertj.version>3.20.2</assertj.version>
-        <checkstyle.version>9.1</checkstyle.version>
+        <checkstyle.version>10.17.0</checkstyle.version>
         <picocli.version>4.6.3</picocli.version>
 
         <!-- Plugin versions -->
         <os_plugin.version>1.6.2</os_plugin.version>
         <protobuf_plugin.version>0.6.1</protobuf_plugin.version>
         <jar_plugin.version>3.2.0</jar_plugin.version>
-        <source_plugin.version>3.2.0</source_plugin.version>
-        <assembly_plugin.version>3.3.0</assembly_plugin.version>
-        <artifact_plugin.version>3.1.0</artifact_plugin.version>
-        <dependency_plugin.version>3.2.0</dependency_plugin.version>
+        <source_plugin.version>3.3.1</source_plugin.version>
+        <assembly_plugin.version>3.7.1</assembly_plugin.version>
+        <artifact_plugin.version>3.5.1</artifact_plugin.version>
+        <dependency_plugin.version>3.8.0</dependency_plugin.version>
         <surefire_plugin.version>3.0.0-M5</surefire_plugin.version>
         <compiler_plugin.version>3.8.0</compiler_plugin.version>
         <checkstyle_plugin.version>3.1.2</checkstyle_plugin.version>
-        <site_plugin.version>3.12.0</site_plugin.version>
+        <site_plugin.version>3.20.0</site_plugin.version>
         <project_info_reports_plugin.version>3.4.2</project_info_reports_plugin.version>
-        <javadoc_plugin.version>3.4.1</javadoc_plugin.version>
+        <javadoc_plugin.version>3.8.0</javadoc_plugin.version>
 
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
