@@ -7,7 +7,7 @@
     <groupId>com.wiligsi</groupId>
     <artifactId>plump</artifactId>
     <packaging>pom</packaging>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 
     <modules>
         <module>common</module>
@@ -45,8 +45,8 @@
         <project_info_reports_plugin.version>3.4.2</project_info_reports_plugin.version>
         <javadoc_plugin.version>3.8.0</javadoc_plugin.version>
 
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
     </properties>
 
     <dependencyManagement>
